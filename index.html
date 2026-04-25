@@ -7,29 +7,80 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0ede6;color:#1a1916;min-height:100vh}
-:root{--cp:#185FA5;--cs:#3B6D11;--cw:#854F0B;--cd:#A32D2D;--bg1:#f0ede6;--bg2:#e8e5de;--border:#ccc9c2;--text1:#1a1916;--text2:#5f5e5a}
+:root{
+  /* Neutral / app chrome */
+  --bg1:#f0ede6;--bg2:#e8e5de;--border:#ccc9c2;--text1:#1a1916;--text2:#5f5e5a;
+  /* Lamela A — Blue */
+  --la:#1558A0;--la-mid:#2E7DD4;--la-light:#E8F1FC;--la-border:#AECBF0;--la-muted:#C8DEFA;
+  /* Lamela B — Green */
+  --lb:#2E7D32;--lb-mid:#43A047;--lb-light:#E8F5E9;--lb-border:#A5D6A7;--lb-muted:#C5E8C6;
+  /* A+B combined — Teal */
+  --lab:#00796B;--lab-light:#E0F2F1;--lab-border:#80CBC4;
+  /* Financije */
+  --fin-pdv:#6A1B9A;--fin-pdv-light:#F3E5F5;
+  --fin-pl:#1558A0;--fin-pl-light:#E8F1FC;
+  --fin-pr:#C84B00;--fin-pr-light:#FFF0E6;
+  --fin-pred-light:#F0FFF0;
+  /* Status */
+  --st-todo-bg:#F1EFE8;--st-todo-c:#5F5E5A;
+  --st-act-bg:#E8F1FC;--st-act-c:#1558A0;
+  --st-done-bg:#E8F5E9;--st-done-c:#2E7D32;
+  /* Prioritet */
+  --pr-hi-bg:#FDEBEB;--pr-hi-c:#C62828;
+  --pr-mid-bg:#FFF3E0;--pr-mid-c:#E65100;
+  --pr-lo-bg:#F1F8E9;--pr-lo-c:#558B2F;
+  /* Akcenti */
+  --warn:#E65100;--danger:#C62828;--highlight:#FFF8DC;--highlight-border:#F0C040;
+  /* Topbar lamela indikator */
+  --tl-active:#1558A0;
+}
+
+/* ===== APP LAYOUT ===== */
 .app{display:flex;height:100vh;overflow:hidden}
-.sidebar{width:210px;flex-shrink:0;background:#e2dfd8;border-right:1px solid var(--border);display:flex;flex-direction:column}
-.slogo{padding:14px;border-bottom:1px solid var(--border)}
-.slogo img{width:100%;max-width:170px;height:auto;display:block}
-.slogo .proj{font-size:11px;color:var(--text2);margin-top:7px;padding-top:7px;border-top:1px solid var(--border)}
-.slogo .proj span{font-weight:600;color:var(--text1)}
+
+/* SIDEBAR */
+.sidebar{width:210px;flex-shrink:0;background:#1E3A5F;border-right:1px solid #152D4A;display:flex;flex-direction:column}
+.slogo{padding:14px;border-bottom:1px solid rgba(255,255,255,.1)}
+.slogo img{width:100%;max-width:170px;height:auto;display:block;border-radius:4px}
+.slogo .proj{font-size:11px;color:rgba(255,255,255,.55);margin-top:7px;padding-top:7px;border-top:1px solid rgba(255,255,255,.1)}
+.slogo .proj span{font-weight:600;color:rgba(255,255,255,.9)}
 .nav{padding:6px 0;flex:1;overflow-y:auto}
-.ni{display:flex;align-items:center;gap:9px;padding:9px 16px;font-size:13px;cursor:pointer;color:var(--text2);border-left:2px solid transparent;white-space:nowrap;transition:all .15s}
-.ni:hover{background:#d8d5ce;color:var(--text1)}
-.ni.active{background:#f0ede6;color:var(--cp);border-left-color:var(--cp);font-weight:500}
+.ni{display:flex;align-items:center;gap:9px;padding:9px 16px;font-size:13px;cursor:pointer;color:rgba(255,255,255,.6);border-left:2px solid transparent;white-space:nowrap;transition:all .15s}
+.ni:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.9)}
+.ni.active{background:rgba(255,255,255,.12);color:#fff;border-left-color:#5BA4E8;font-weight:500}
 .ni-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
-.sver{padding:10px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text2)}
+.sver{padding:10px 14px;border-top:1px solid rgba(255,255,255,.1);font-size:11px;color:rgba(255,255,255,.35)}
+
+/* MAIN */
 .main{flex:1;overflow:hidden;display:flex;flex-direction:column;min-width:0;background:var(--bg1)}
+
+/* TOPBAR */
 .topbar{padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--bg2)}
 .topbar h1{font-size:15px;font-weight:500;flex:1;min-width:80px}
+
+/* Lamela switcher buttons — A blue, B green, Sve neutral */
 .tb-btn{display:inline-flex;align-items:center;justify-content:center;height:28px;padding:0 11px;font-size:12px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:var(--bg1);color:var(--text2);font-family:inherit;white-space:nowrap;transition:all .15s}
 .tb-btn:hover{background:var(--bg2);color:var(--text1)}
-.tb-btn.active{background:var(--cp);color:#fff;border-color:var(--cp)}
+.tb-btn[data-l="sve"].active{background:#374151;color:#fff;border-color:#374151}
+.tb-btn[data-l="A"].active{background:var(--la);color:#fff;border-color:var(--la)}
+.tb-btn[data-l="B"].active{background:var(--lb);color:#fff;border-color:var(--lb)}
+.tb-btn:not([data-l]).active{background:var(--la);color:#fff;border-color:var(--la)}
+
+/* Active lamela indicator strip on topbar */
+body.lam-A .topbar{border-bottom:2px solid var(--la)}
+body.lam-B .topbar{border-bottom:2px solid var(--lb)}
+body.lam-sve .topbar{border-bottom:1px solid var(--border)}
+
 .content{flex:1;overflow-y:auto;padding:16px 18px}
 .page{display:none}.page.active{display:block}
+
+/* DASHBOARD */
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
-.mc{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.mc{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 14px;border-top:3px solid var(--border)}
+.mc.mc-a{border-top-color:var(--la)}
+.mc.mc-b{border-top-color:var(--lb)}
+.mc.mc-w{border-top-color:var(--warn)}
+.mc.mc-n{border-top-color:#374151}
 .mc .lbl{font-size:11px;color:var(--text2);margin-bottom:4px}
 .mc .val{font-size:18px;font-weight:600}
 .mc .sub{font-size:11px;color:var(--text2);margin-top:2px}
@@ -38,61 +89,121 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .cc{background:#fff;border:1px solid var(--border);border-radius:8px;padding:11px 13px}
 .cc .cn{font-size:11px;color:var(--text2);margin-bottom:5px}
 .cc .cv{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
-.cc .ct{font-size:13px;font-weight:600}.cc .cp2{font-size:11px;color:var(--cs)}
-.pb{height:4px;background:var(--bg2);border-radius:2px;overflow:hidden}
-.pf{height:100%;background:var(--cp);border-radius:2px}
+.cc .ct{font-size:13px;font-weight:600}
+.cc .cp2{font-size:11px;color:var(--lb)}
+.pb{height:5px;background:var(--bg2);border-radius:2px;overflow:hidden}
+.pf-a{height:100%;background:var(--la-mid);border-radius:2px}
+.pf-b{height:100%;background:var(--lb-mid);border-radius:2px}
+.pf-ab{height:100%;background:var(--lab);border-radius:2px}
+
+/* TABLE BOX */
 .tbox{background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .tf{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#fafaf8}
 .tf input,.tf select{font-size:12px;padding:3px 8px;height:27px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text1);font-family:inherit}
-.tf input:focus,.tf select:focus{outline:none;border-color:var(--cp)}
+.tf input:focus,.tf select:focus{outline:none;border-color:var(--la)}
 table{width:100%;border-collapse:collapse;font-size:11.5px}
+
+/* TABLE HEADER — neutral, lamela cols coloured */
 thead tr.hdr-group th{padding:5px 7px;font-weight:700;font-size:11px;color:var(--text1);background:#e8e5de;border-bottom:1px solid #bbb;border-right:1px solid var(--border);text-align:center;white-space:nowrap}
 thead tr.hdr-group th:last-child{border-right:none}
+thead tr.hdr-group th.th-a{background:var(--la-light);color:var(--la);border-bottom-color:var(--la-border)}
+thead tr.hdr-group th.th-b{background:var(--lb-light);color:var(--lb);border-bottom-color:var(--lb-border)}
+thead tr.hdr-group th.th-fin{background:#FAF5FF;color:var(--fin-pdv)}
+thead tr.hdr-group th.th-pay{background:#FFF5F0;color:var(--fin-pr)}
 thead tr.hdr-cols th{padding:6px 7px;text-align:center;font-weight:600;font-size:10.5px;color:var(--text2);background:#f0ede6;border-bottom:2px solid #bbb9b2;white-space:normal;line-height:1.2;cursor:pointer;user-select:none;vertical-align:bottom;min-width:50px}
 thead tr.hdr-cols th:hover{color:var(--text1)}
 thead tr.hdr-cols th.sort-asc::after{content:' ▲';font-size:9px;opacity:.7}
 thead tr.hdr-cols th.sort-desc::after{content:' ▼';font-size:9px;opacity:.7}
+thead tr.hdr-cols th.th-a{background:var(--la-light);color:var(--la);border-bottom-color:var(--la-border)}
+thead tr.hdr-cols th.th-b{background:var(--lb-light);color:var(--lb);border-bottom-color:var(--lb-border)}
+thead tr.hdr-cols th.th-pred{background:var(--fin-pred-light)}
+thead tr.hdr-cols th.th-pdv{background:var(--fin-pdv-light);color:var(--fin-pdv)}
+thead tr.hdr-cols th.th-pay{background:var(--fin-pl-light);color:var(--fin-pl)}
+thead tr.hdr-cols th.th-pr{background:var(--fin-pr-light);color:var(--fin-pr)}
+
 td{padding:5px 7px;border-bottom:1px solid #ebe8e1;color:var(--text1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 tr:last-child td{border-bottom:none}
 tr.st-row{cursor:pointer;transition:background .1s}
-tr.st-row:hover td{background:#f5f2ee!important}
-tr.st-row.highlighted td{background:#FFF3CD!important;outline:2px solid #F0A500;outline-offset:-1px}
-.badge{display:inline-block;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:500;white-space:nowrap}
-.b-todo{background:#F1EFE8;color:#5F5E5A}.b-act{background:#E6F1FB;color:#185FA5}.b-done{background:#EAF3DE;color:#3B6D11}
-.b-hi{background:#FCEBEB;color:#A32D2D}.b-mid{background:#FAEEDA;color:#854F0B}.b-lo{background:#EAF3DE;color:#3B6D11}
-.b-neto{background:#FDE8FF;color:#7B1FA2}.b-bruto{background:#E8F5E9;color:#2E7D32}
-.b-ugo{background:#E6F1FB;color:#185FA5}.b-nugo{background:#F1EFE8;color:#5F5E5A}
+tr.st-row:hover td{background:#f0f4f8!important}
+tr.st-row.highlighted td{background:var(--highlight)!important;outline:2px solid var(--highlight-border);outline-offset:-1px}
+
+/* Coloured table cells by lamela */
+td.td-a{background:var(--la-light)!important}
+td.td-b{background:var(--lb-light)!important}
+td.td-pred{background:var(--fin-pred-light)!important}
+td.td-pdv{background:var(--fin-pdv-light)!important;color:var(--fin-pdv);font-weight:500}
+td.td-pay{background:var(--fin-pl-light)!important;color:var(--fin-pl);font-weight:500}
+td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
+
+/* BADGES */
+.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;white-space:nowrap}
+/* Lamela badges */
+.b-la{background:var(--la-light);color:var(--la);border:1px solid var(--la-muted)}
+.b-lb{background:var(--lb-light);color:var(--lb);border:1px solid var(--lb-muted)}
+.b-lab{background:var(--lab-light);color:var(--lab);border:1px solid var(--lab-border)}
+/* Status */
+.b-todo{background:var(--st-todo-bg);color:var(--st-todo-c)}
+.b-act{background:var(--st-act-bg);color:var(--st-act-c)}
+.b-done{background:var(--st-done-bg);color:var(--st-done-c)}
+/* Prioritet */
+.b-hi{background:var(--pr-hi-bg);color:var(--pr-hi-c)}
+.b-mid{background:var(--pr-mid-bg);color:var(--pr-mid-c)}
+.b-lo{background:var(--pr-lo-bg);color:var(--pr-lo-c)}
+/* Tip cene */
+.b-neto{background:#F3E5F5;color:#6A1B9A}
+.b-bruto{background:#E8F5E9;color:#2E7D32}
+/* Ugovoreno */
+.b-ugo{background:var(--la-light);color:var(--la)}
+.b-nugo{background:var(--st-todo-bg);color:var(--st-todo-c)}
+
+/* BUTTONS */
 .btn{padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
-.btn-p{background:var(--cp);color:#fff;border:none}.btn-p:hover{background:#1450a0}
+.btn-p{background:var(--la);color:#fff;border:none}.btn-p:hover{background:#0F4A8A}
 .btn-s{background:transparent;border:1px solid var(--border);color:var(--text1)}.btn-s:hover{background:var(--bg2)}
-.btn-del{background:transparent;border:1px solid #f5c0c0;color:#A32D2D;font-size:11px;padding:3px 8px}.btn-del:hover{background:#FCEBEB}
-.modal-wrap{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:100}
+.btn-del{background:transparent;border:1px solid #FFCDD2;color:var(--danger);font-size:11px;padding:3px 8px}.btn-del:hover{background:#FFEBEE}
+
+/* MODAL */
+.modal-wrap{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:100}
 .modal-wrap.open{display:flex}
-.modal{background:#fff;border-radius:10px;border:1px solid var(--border);padding:20px;width:620px;max-height:92vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18)}
+.modal{background:#fff;border-radius:10px;border:1px solid var(--border);padding:20px;width:640px;max-height:92vh;overflow-y:auto;box-shadow:0 12px 48px rgba(0,0,0,.2)}
 .modal h2{font-size:15px;font-weight:600;margin-bottom:14px;color:var(--text1)}
 .fr{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
 .fg{display:flex;flex-direction:column;gap:4px;margin-bottom:9px}
 .fg label{font-size:11px;color:var(--text2);font-weight:500}
 .fg input,.fg select,.fg textarea{font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text1);font-family:inherit}
-.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--cp)}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--la);box-shadow:0 0 0 2px var(--la-muted)}
 .fg textarea{height:52px;resize:vertical}
 .mf{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
 .mf-left{justify-content:space-between}
-.pdv-info{background:#f5f3ee;border-radius:6px;padding:9px 11px;font-size:12px;color:var(--text2);margin-bottom:9px;min-height:32px;border:1px solid var(--border)}
+.pdv-info{background:#FFFBF0;border-radius:6px;padding:9px 11px;font-size:12px;color:var(--text2);margin-bottom:9px;min-height:32px;border:1px solid #F5E08A}
 .divl{border-top:1px solid var(--border);margin:11px 0}
-/* Lamela tab sekcije u modalu */
+
+/* LAMELA TABS in modal */
 .lam-tabs{display:flex;gap:0;margin-bottom:12px;border-radius:7px;overflow:hidden;border:1px solid var(--border)}
-.lam-tab{flex:1;padding:7px 0;text-align:center;font-size:12px;cursor:pointer;background:#fafaf8;color:var(--text2);font-weight:500;border-right:1px solid var(--border);transition:all .15s}
+.lam-tab{flex:1;padding:8px 0;text-align:center;font-size:12px;cursor:pointer;background:#fafaf8;color:var(--text2);font-weight:600;border-right:1px solid var(--border);transition:all .15s}
 .lam-tab:last-child{border-right:none}
-.lam-tab.active{background:var(--cp);color:#fff}
+.lam-tab.tab-a.active{background:var(--la);color:#fff}
+.lam-tab.tab-b.active{background:var(--lb);color:#fff}
+.lam-tab.tab-ab.active{background:var(--lab);color:#fff}
+.lam-tab:not(.active):hover{background:var(--bg2)}
 .lam-panel{display:none}
 .lam-panel.active{display:block}
 .lam-box{background:#fafaf8;border:1px solid var(--border);border-radius:7px;padding:12px;margin-bottom:9px}
-.lam-box h4{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:9px;text-transform:uppercase;letter-spacing:.05em}
+.lam-box.lam-box-a{background:var(--la-light);border-color:var(--la-border)}
+.lam-box.lam-box-b{background:var(--lb-light);border-color:var(--lb-border)}
+.lam-box.lam-box-ab{background:var(--lab-light);border-color:var(--lab-border)}
+.lam-box h4{font-size:11px;font-weight:700;margin-bottom:9px;text-transform:uppercase;letter-spacing:.06em}
+.lam-box-a h4{color:var(--la)}
+.lam-box-b h4{color:var(--lb)}
+.lam-box-ab h4{color:var(--lab)}
+
+/* UPLOAD / PDF */
 .upload-area{border:1.5px dashed var(--border);border-radius:6px;padding:11px;text-align:center;cursor:pointer;font-size:11px;color:var(--text2);transition:all .15s}
-.upload-area:hover{background:var(--bg2);border-color:var(--cp)}
-.pdf-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#FCEBEB;color:#A32D2D;border-radius:6px;font-size:11px;margin-top:4px;cursor:pointer}
+.upload-area:hover{background:var(--la-light);border-color:var(--la)}
+.pdf-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#FFEBEE;color:var(--danger);border-radius:6px;font-size:11px;margin-top:4px;cursor:pointer}
+
+/* GANTT */
 .gantt-wrap{overflow-x:auto}
 .gc{display:flex;gap:8px;align-items:center;margin-bottom:11px;flex-wrap:wrap}
 .gc label{font-size:12px;color:var(--text2)}
@@ -105,13 +216,27 @@ tr.st-row.highlighted td{background:#FFF3CD!important;outline:2px solid #F0A500;
 .g-rl{width:200px;flex-shrink:0;font-size:11px;padding:1px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .g-track{flex:1;position:relative;height:18px}
 .g-bar{position:absolute;height:14px;top:2px;border-radius:3px;display:flex;align-items:center;padding:0 5px;min-width:4px}
-.g-bar.c-act{background:var(--cp)}.g-bar.c-don{background:var(--cs)}.g-bar.c-todo{background:#B4B2A9}
-.today-line{position:absolute;top:0;width:1.5px;background:#E24B4A;height:100%;z-index:2}
+/* Gantt bars: A bars blue, B bars green, per lam selection */
+.g-bar.c-a-act{background:var(--la)}
+.g-bar.c-a-don{background:#0D47A1}
+.g-bar.c-a-todo{background:var(--la-muted)}
+.g-bar.c-b-act{background:var(--lb)}
+.g-bar.c-b-don{background:#1B5E20}
+.g-bar.c-b-todo{background:var(--lb-muted)}
+.g-bar.c-act{background:var(--la)}.g-bar.c-don{background:#0D47A1}.g-bar.c-todo{background:#B4B2A9}
+.today-line{position:absolute;top:0;width:1.5px;background:#E53935;height:100%;z-index:2}
 .g-bl{font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis}
 .g-leg{display:flex;gap:14px;margin-top:9px;flex-wrap:wrap}
 .g-li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
 .g-ld{width:10px;height:10px;border-radius:2px}
-.sit-pdf-link{cursor:pointer;color:var(--cd);text-decoration:underline;font-size:11px}
+
+/* SITUACIJE */
+.sit-pdf-link{cursor:pointer;color:var(--danger);text-decoration:underline;font-size:11px}
+
+/* IZV card accent */
+.izv-card-a{border-top:3px solid var(--la)!important}
+.izv-card-b{border-top:3px solid var(--lb)!important}
+.izv-card-ab{border-top:3px solid var(--lab)!important}
 </style>
 </head>
 <body>
@@ -169,20 +294,20 @@ tr.st-row.highlighted td{background:#FFF3CD!important;outline:2px solid #F0A500;
                 <th rowspan="2">Jed. mere</th>
                 <th rowspan="2">Kol.</th>
                 <th rowspan="2">Jed. cena (€)</th>
-                <th colspan="2" style="background:#ddf0dd;border-left:2px solid #aac">Predviđena cena</th>
-                <th colspan="2" style="background:#dde8ff;border-left:2px solid #aac">Ugovorena cena</th>
-                <th rowspan="2" style="background:#fff0cc;border-left:2px solid #aac">PDV<br>(€)</th>
-                <th rowspan="2" style="background:#ffe8e8;border-left:2px solid #aac">Plaćeno<br>(€)</th>
-                <th rowspan="2" style="background:#ffe8e8">Preostalo<br>(€)</th>
+                <th colspan="2" class="th-pred" style="border-left:2px solid #aac">Predviđena cena</th>
+                <th colspan="2" id="th-ugo-grp" style="border-left:2px solid #aac">Ugovorena cena</th>
+                <th rowspan="2" class="th-pdv" style="border-left:2px solid #aac">PDV<br>(€)</th>
+                <th rowspan="2" class="th-pay" style="border-left:2px solid #aac">Plaćeno<br>(€)</th>
+                <th rowspan="2" class="th-pr">Preostalo<br>(€)</th>
                 <th rowspan="2" data-col="status" style="cursor:pointer">Status</th>
                 <th rowspan="2" data-col="prioritet" style="cursor:pointer">Prior.</th>
                 <th rowspan="2"></th>
               </tr>
               <tr class="hdr-cols">
-                <th style="background:#ddf0dd;border-left:2px solid #aac" data-col="predvidjena">NETO (€)</th>
-                <th style="background:#ddf0dd">BRUTO (€)</th>
-                <th style="background:#dde8ff;border-left:2px solid #aac" data-col="neto">NETO (€)</th>
-                <th style="background:#dde8ff">BRUTO (€)</th>
+                <th class="th-pred" data-col="predvidjena" style="border-left:2px solid #aac">NETO (€)</th>
+                <th class="th-pred">BRUTO (€)</th>
+                <th id="th-ugo-n" data-col="neto" style="border-left:2px solid #aac">NETO (€)</th>
+                <th id="th-ugo-b">BRUTO (€)</th>
               </tr>
             </thead>
             <tbody id="st-body"></tbody>
@@ -205,10 +330,12 @@ tr.st-row.highlighted td{background:#FFF3CD!important;outline:2px solid #F0A500;
       </div>
       <div id="gantt-container"></div>
       <div class="g-leg">
-        <div class="g-li"><div class="g-ld" style="background:#185FA5"></div>U toku</div>
-        <div class="g-li"><div class="g-ld" style="background:#3B6D11"></div>Završeno</div>
-        <div class="g-li"><div class="g-ld" style="background:#B4B2A9"></div>Nije počelo</div>
-        <div class="g-li"><div class="g-ld" style="background:#E24B4A;width:2px;height:10px;border-radius:0"></div>Danas</div>
+      <div class="g-li"><div class="g-ld" style="background:var(--la)"></div>U toku (A)</div>
+        <div class="g-li"><div class="g-ld" style="background:#0D47A1"></div>Završeno (A)</div>
+        <div class="g-li"><div class="g-ld" style="background:var(--lb)"></div>U toku (B)</div>
+        <div class="g-li"><div class="g-ld" style="background:#1B5E20"></div>Završeno (B)</div>
+        <div class="g-li"><div class="g-ld" style="background:var(--la-muted)"></div>Nije počelo</div>
+        <div class="g-li"><div class="g-ld" style="background:#E53935;width:2px;height:10px;border-radius:0"></div>Danas</div>
       </div>
     </div>
     <div class="page" id="page-situacije">
@@ -449,15 +576,16 @@ function rHome(){
   const pct=tot?Math.round(pl/tot*100):0;
   const zav=stavke.filter(s=>getStatus(s)==='Završeno').length;
   document.getElementById('m-grid').innerHTML=`
-    <div class="mc"><div class="lbl">Ukupno BRUTO (ugovoreno)</div><div class="val">${fmt(tot)} €</div><div class="sub">PDV: ${fmt(tot-totN)} €</div></div>
-    <div class="mc"><div class="lbl">Plaćeno BRUTO</div><div class="val" style="color:#185FA5">${fmt(pl)} €</div><div class="sub">${pct}% izvršeno</div></div>
-    <div class="mc"><div class="lbl">Preostalo</div><div class="val" style="color:#854F0B">${fmt(tot-pl)} €</div></div>
-    <div class="mc"><div class="lbl">Završene stavke</div><div class="val">${zav} / ${stavke.length}</div></div>`;
+    <div class="mc mc-n"><div class="lbl">Ukupno BRUTO (ugovoreno)</div><div class="val">${fmt(tot)} €</div><div class="sub">PDV: ${fmt(tot-totN)} €</div></div>
+    <div class="mc mc-a"><div class="lbl">Plaćeno BRUTO</div><div class="val" style="color:var(--la)">${fmt(pl)} €</div><div class="sub">${pct}% izvršeno</div></div>
+    <div class="mc mc-w"><div class="lbl">Preostalo</div><div class="val" style="color:var(--warn)">${fmt(tot-pl)} €</div></div>
+    <div class="mc mc-b"><div class="lbl">Završene stavke</div><div class="val" style="color:var(--lb)">${zav} / ${stavke.length}</div></div>`;
   const cats={};
   stavke.forEach(s=>{if(!cats[s.kat])cats[s.kat]={b:0,pl:0};cats[s.kat].b+=getUgoB(s);cats[s.kat].pl+=getPl(s);});
+  const pfCls=lam==='A'?'pf-a':lam==='B'?'pf-b':'pf-ab';
   document.getElementById('c-grid').innerHTML=Object.entries(cats).sort((a,b)=>b[1].b-a[1].b).map(([k,v])=>{
     const p=v.b?Math.round(v.pl/v.b*100):0;
-    return`<div class="cc"><div class="cn">${k}</div><div class="cv"><span class="ct">${fmt(v.b)} €</span><span class="cp2">${fmt(v.pl)} € plaćeno</span></div><div class="pb"><div class="pf" style="width:${p}%"></div></div></div>`;
+    return`<div class="cc"><div class="cn">${k}</div><div class="cv"><span class="ct">${fmt(v.b)} €</span><span class="cp2">${fmt(v.pl)} € plaćeno</span></div><div class="pb"><div class="${pfCls}" style="width:${p}%"></div></div></div>`;
   }).join('');
 }
 
@@ -497,11 +625,12 @@ function rStavke(){
   }
   document.getElementById('st-body').innerHTML=fil.map(s=>{
     const predN=s.predvidjena||0;
-    const predB=predN; // predviđena nema tip, prikazujemo direktno
+    const predB=predN;
     const ugoN=getUgoN(s), ugoB=getUgoB(s), pdv=getPDV(s);
     const pl=getPl(s), pr=Math.max(0,ugoB-pl);
     const st=getStatus(s), pri=getPrioritet(s);
     const hl=hlRow===s.id;
+    const lamTd=lam==='A'?'td-a':lam==='B'?'td-b':'td-a';
     return`<tr class="st-row${hl?' highlighted':''}" data-id="${s.id}">
       <td style="text-align:center;color:#5f5e5a">${s.id}</td>
       <td style="font-size:10.5px;color:#5f5e5a" title="${esc(s.kat)}">${s.kat}</td>
@@ -510,13 +639,13 @@ function rStavke(){
       <td style="text-align:center;color:#5f5e5a">${s.jedMere||'—'}</td>
       <td style="text-align:right;color:#5f5e5a">${s.kolicina||'—'}</td>
       <td style="text-align:right;color:#5f5e5a">${s.jedCena?fmt(s.jedCena):'—'}</td>
-      <td style="text-align:right;background:#f5fcf5">${fmt(predN)}</td>
-      <td style="text-align:right;background:#f5fcf5;font-weight:500">${fmt(predB)}</td>
-      <td style="text-align:right;background:#f0f5ff">${fmt(ugoN)}</td>
-      <td style="text-align:right;background:#f0f5ff;font-weight:600">${fmt(ugoB)}</td>
-      <td style="text-align:right;background:#fff8ee;color:#7B1FA2">${pdv?fmt(pdv):'—'}</td>
-      <td style="text-align:right;background:#fff0f0;color:#3B6D11;font-weight:500">${fmt(pl)}</td>
-      <td style="text-align:right;background:#fff0f0;color:#854F0B">${fmt(pr)}</td>
+      <td class="td-pred" style="text-align:right">${fmt(predN)}</td>
+      <td class="td-pred" style="text-align:right;font-weight:500">${fmt(predB)}</td>
+      <td class="${lamTd}" style="text-align:right">${fmt(ugoN)}</td>
+      <td class="${lamTd}" style="text-align:right;font-weight:600">${fmt(ugoB)}</td>
+      <td class="td-pdv" style="text-align:right">${pdv?fmt(pdv):'—'}</td>
+      <td class="td-pay" style="text-align:right">${fmt(pl)}</td>
+      <td class="td-pr" style="text-align:right">${fmt(pr)}</td>
       <td><span class="badge ${st==='Završeno'?'b-done':st==='U toku'?'b-act':'b-todo'}">${st}</span></td>
       <td><span class="badge ${pri==='Visok'?'b-hi':pri==='Srednji'?'b-mid':'b-lo'}">${pri}</span></td>
       <td><button class="btn btn-s" style="font-size:10px;padding:2px 6px;white-space:nowrap" onclick="event.stopPropagation();oM('stavka',${s.id})">Uredi</button></td>
@@ -597,7 +726,8 @@ function rIzv(){
       ?`<span class="badge b-done" style="font-size:9px">A+B</span>`
       :hasA?`<span class="badge b-act" style="font-size:9px">A</span>`
       :hasB?`<span class="badge b-mid" style="font-size:9px">B</span>`:'';
-    return`<div style="background:#fff;border:1px solid #ccc9c2;border-radius:8px;padding:13px">
+    const cardBorderCls=hasA&&hasB?'izv-card-ab':hasA?'izv-card-a':'izv-card-b';
+    return`<div style="background:#fff;border:1px solid #ccc9c2;border-radius:8px;padding:13px" class="${cardBorderCls}">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
         <div style="width:36px;height:36px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#185FA5;flex-shrink:0">${i.naziv.slice(0,2).toUpperCase()}</div>
         <div style="flex:1;min-width:0">
@@ -636,16 +766,17 @@ function rGantt(){
   // Prikaz po lameli
   let rows=[];
   stavke.forEach(s=>{
-    const addRow=(lobj,lbl)=>{
+    const addRow=(lobj,lbl,isA)=>{
       if(!lobj.pocetak||!lobj.zavrsetak)return;
       if(gfk&&s.kat!==gfk)return;
       if(gfs&&lobj.status!==gfs)return;
       const sm=new Date(lobj.pocetak).getTime(),em=new Date(lobj.zavrsetak).getTime();
       if(em<sMs||sm>eMs)return;
-      rows.push({naziv:s.naziv+(lam==='sve'?' ('+lbl+')':''),status:lobj.status,posto:lobj.posto||0,sm,em});
+      const prefix=isA?'c-a-':'c-b-';
+      rows.push({naziv:s.naziv+(lam==='sve'?' ('+lbl+')':''),status:lobj.status,posto:lobj.posto||0,sm,em,prefix});
     };
-    if(lam==='A'||lam==='sve') addRow(s.lamelaA,'A');
-    if(lam==='B'||lam==='sve') addRow(s.lamelaB,'B');
+    if(lam==='A'||lam==='sve') addRow(s.lamelaA,'A',true);
+    if(lam==='B'||lam==='sve') addRow(s.lamelaB,'B',false);
   });
 
   let html=`<div class="g-header"><div class="g-lc">Stavka</div><div class="g-months">${months.map(m=>`<div class="g-mon">${m}</div>`).join('')}</div></div>`;
@@ -653,7 +784,7 @@ function rGantt(){
   rows.forEach(r=>{
     const l=Math.max(0,Math.round((r.sm-sMs)/tMs*100));
     const w=Math.max(1,Math.round((r.em-r.sm)/tMs*100));
-    const cls=r.status==='Završeno'?'c-don':r.status==='U toku'?'c-act':'c-todo';
+    const cls=r.prefix+(r.status==='Završeno'?'don':r.status==='U toku'?'act':'todo');
     html+=`<div class="g-row"><div class="g-rl" title="${esc(r.naziv)}">${r.naziv}</div><div class="g-track" style="position:relative">`;
     if(today>=sD&&today<=eD)html+=`<div class="today-line" style="left:${tdP}%"></div>`;
     html+=`<div class="g-bar ${cls}" style="left:${l}%;width:${w}%"><span class="g-bl">${r.posto}%</span></div></div></div>`;
@@ -732,9 +863,9 @@ function oM(type,id){
     const la=d.lamelaA||mkLam(), lb=d.lamelaB||mkLam();
     const kats=['Grubi građevinski radovi','Fini građevinski radovi','Instalacije','Materijal','Zemljani radovi','Zakonski troškovi','Pravni troškovi','Projektni troškovi','Administrativni troškovi','Opšti troškovi','Troškovi uređenja partera','Radna snaga','Marketing'];
 
-    const lamPanel=(pfx, l, lbl, color)=>`
-      <div class="lam-box" style="border-color:${color}20;background:${color}08">
-        <h4 style="color:${color}">LAMELA ${lbl}</h4>
+    const lamPanel=(pfx, l, lbl, boxClass)=>`
+      <div class="lam-box ${boxClass}">
+        <h4>LAMELA ${lbl}</h4>
         <div class="fr">
           <div class="fg"><label>Izvođač</label><input id="${pfx}izvr" value="${esc(l.izvodjac||'')}" list="izv-dl"></div>
           <div class="fg"><label>Ugovorena cena — unos (€)</label><input id="${pfx}ugo" type="number" value="${l.ugovorenaUnos||''}" placeholder="Prazno = predviđena" oninput="uPI('${pfx}')"></div>
@@ -796,16 +927,16 @@ function oM(type,id){
       <div class="divl"></div>
       <!-- Lamela tabs -->
       <div class="lam-tabs">
-        <div class="lam-tab active" onclick="swLam('la','lb','lc',this)">🅐 Lamela A</div>
-        <div class="lam-tab" onclick="swLam('lb','la','lc',this)">🅑 Lamela B</div>
-        <div class="lam-tab" onclick="swLam('lc','la','lb',this)" style="background:#e8f5e9;color:#3B6D11">A+B isti izvođač</div>
+        <div class="lam-tab tab-a active" onclick="swLam('la','lb','lc',this)">🅐 Lamela A</div>
+        <div class="lam-tab tab-b" onclick="swLam('lb','la','lc',this)">🅑 Lamela B</div>
+        <div class="lam-tab tab-ab" onclick="swLam('lc','la','lb',this)">A+B isti izvođač</div>
       </div>
-      <div id="lam-la" class="lam-panel active">${lamPanel('la-','la','A','#185FA5')}</div>
-      <div id="lam-lb" class="lam-panel">${lamPanel('lb-','lb','B','#3B6D11')}</div>
+      <div id="lam-la" class="lam-panel active">${lamPanel('la-','la','A','lam-box-a')}</div>
+      <div id="lam-lb" class="lam-panel">${lamPanel('lb-','lb','B','lam-box-b')}</div>
       <div id="lam-lc" class="lam-panel">
         <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:7px;padding:12px;margin-bottom:9px">
           <div style="font-size:11px;font-weight:600;color:#3B6D11;margin-bottom:9px">A+B — Isti izvođač, iste uslove unesite jednom i primeniće se na obe lamele</div>
-          ${lamPanel('lc-',la,'A+B','#3B6D11')}
+          ${lamPanel('lc-',la,'A+B','lam-box-ab')}
         </div>
       </div>
       <div class="mf"><button class="btn btn-s" onclick="cM()">Otkaži</button><button class="btn btn-p" onclick="saveSt(${id||''})">Sačuvaj</button></div>`;
@@ -966,7 +1097,18 @@ document.querySelector('.sidebar').addEventListener('click',e=>{
 });
 document.querySelectorAll('.tb-btn[data-l]').forEach(b=>b.addEventListener('click',function(){
   document.querySelectorAll('.tb-btn[data-l]').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active');lam=b.dataset.l;rAll();
+  b.classList.add('active');lam=b.dataset.l;
+  // Body class for topbar indicator
+  document.body.className=document.body.className.replace(/lam-\S+/g,'').trim()+' lam-'+lam;
+  // Dynamic ugovorena header color
+  const thG=document.getElementById('th-ugo-grp');
+  const thN=document.getElementById('th-ugo-n');
+  const thB=document.getElementById('th-ugo-b');
+  if(thG){
+    const cls=lam==='A'?'th-a':lam==='B'?'th-b':'th-a';
+    [thG,thN,thB].forEach(t=>{if(t){t.className=cls;}});
+  }
+  rAll();
 }));
 document.getElementById('btn-excel').addEventListener('click',exportExcel);
 document.getElementById('btn-pdf').addEventListener('click',exportPDF);
@@ -984,6 +1126,7 @@ document.getElementById('tbl-predmer').addEventListener('click',e=>{
 document.getElementById('mwrap').addEventListener('click',e=>{if(e.target===document.getElementById('mwrap'))cM();});
 
 // Init
+document.body.classList.add('lam-sve');
 rAll();
 </script>
 </body>
