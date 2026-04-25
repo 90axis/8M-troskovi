@@ -1,2 +1,2 @@
-# 8M-tro-kovi
+# 8M-troskovi
 Predmer i predračun
