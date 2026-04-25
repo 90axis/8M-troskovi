@@ -155,7 +155,7 @@ tr.st-row.highlighted td{background:#FFF3CD!important;outline:2px solid #F0A500;
           <select id="fst"><option value="">Svi statusi</option><option>Nije počelo</option><option>U toku</option><option>Završeno</option></select>
           <select id="fp"><option value="">Prioritet</option><option>Visok</option><option>Srednji</option><option>Nizak</option></select>
           <select id="ftp"><option value="">Tip cene</option><option value="NETO">NETO</option><option value="BRUTO">BRUTO</option></select>
-          <select id="fugo"><option value="">Ugovoreno</option><option value="da">Ugovoreno</option><option value="ne">Neugovoreno</option></select>
+          <select id="fugo"><option value="">Status ugovora</option><option value="da">Ugovoreno</option><option value="ne">Neugovoreno</option></select>
           <button class="btn btn-p" style="margin-left:auto;height:27px;padding:0 11px;font-size:12px" id="btn-nova-stavka">+ Nova stavka</button>
         </div>
         <div style="overflow-x:auto">
@@ -164,7 +164,8 @@ tr.st-row.highlighted td{background:#FFF3CD!important;outline:2px solid #F0A500;
               <tr class="hdr-group">
                 <th rowspan="2" data-col="id" style="cursor:pointer">R.br.</th>
                 <th rowspan="2" data-col="kat" style="cursor:pointer">Kategorija</th>
-                <th rowspan="2" data-col="naziv" style="cursor:pointer;min-width:140px">Naziv</th>
+                <th rowspan="2" data-col="naziv" style="cursor:pointer;min-width:140px">Opis radova/<br>materijala</th>
+                <th rowspan="2" style="min-width:90px">Izvođač</th>
                 <th rowspan="2">Jed. mere</th>
                 <th rowspan="2">Kol.</th>
                 <th rowspan="2">Jed. cena (€)</th>
@@ -414,6 +415,18 @@ function getPrioritet(s){
   return a<=b?s.lamelaA.prioritet:s.lamelaB.prioritet;
 }
 
+function getIzvLabel(s){
+  if(lam==='A') return s.lamelaA.izvodjac?`<span style="color:#185FA5">${esc(s.lamelaA.izvodjac)}</span> <span style="font-size:9px;color:#aaa">(A)</span>`:'—';
+  if(lam==='B') return s.lamelaB.izvodjac?`<span style="color:#3B6D11">${esc(s.lamelaB.izvodjac)}</span> <span style="font-size:9px;color:#aaa">(B)</span>`:'—';
+  // Sve: prikazujemo oba ako su različiti, ili samo jedan
+  const a=s.lamelaA.izvodjac||'', b=s.lamelaB.izvodjac||'';
+  if(!a&&!b) return '—';
+  if(a===b) return `<span>${esc(a)}</span> <span style="font-size:9px;color:#aaa">(A+B)</span>`;
+  const parts=[];
+  if(a) parts.push(`<span style="color:#185FA5">${esc(a)}</span><span style="font-size:9px;color:#aaa"> A</span>`);
+  if(b) parts.push(`<span style="color:#3B6D11">${esc(b)}</span><span style="font-size:9px;color:#aaa"> B</span>`);
+  return parts.join('<br>');
+}
 function fmt(n){return Number(n||0).toLocaleString('sr-Latn-RS')}
 function fd(d){if(!d)return'—';const p=d.split('-');return p[2]+'.'+p[1]+'.'+p[0]}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
@@ -493,6 +506,7 @@ function rStavke(){
       <td style="text-align:center;color:#5f5e5a">${s.id}</td>
       <td style="font-size:10.5px;color:#5f5e5a" title="${esc(s.kat)}">${s.kat}</td>
       <td title="${esc(s.naziv)}" style="font-weight:500">${s.naziv}</td>
+      <td style="font-size:10.5px">${getIzvLabel(s)}</td>
       <td style="text-align:center;color:#5f5e5a">${s.jedMere||'—'}</td>
       <td style="text-align:right;color:#5f5e5a">${s.kolicina||'—'}</td>
       <td style="text-align:right;color:#5f5e5a">${s.jedCena?fmt(s.jedCena):'—'}</td>
@@ -560,21 +574,38 @@ function viewSitPdf(sid){
 // ===== IZVOĐAČI =====
 function rIzv(){
   document.getElementById('izv-grid').innerHTML=izv.map(i=>{
-    // Prikaz stavki gde je ovaj izvođač angažovan (u nekoj lameli)
-    const engaged=stavke.filter(s=>s.lamelaA.izvodjac===i.naziv||s.lamelaB.izvodjac===i.naziv);
-    const totalPl=engaged.reduce((a,s)=>{
-      let p=0;
-      if(s.lamelaA.izvodjac===i.naziv)p+=s.lamelaA.placenoB||0;
-      if(s.lamelaB.izvodjac===i.naziv)p+=s.lamelaB.placenoB||0;
-      return a+p;
-    },0);
+    // Filter stavki po aktivnoj lameli
+    const engagedA=stavke.filter(s=>s.lamelaA.izvodjac===i.naziv);
+    const engagedB=stavke.filter(s=>s.lamelaB.izvodjac===i.naziv);
+    // Filtriramo prikaz po aktivnoj lameli
+    if(lam==='A'&&engagedA.length===0) return '';
+    if(lam==='B'&&engagedB.length===0) return '';
+    const engaged=lam==='A'?engagedA:lam==='B'?engagedB:[...new Set([...engagedA,...engagedB])];
+    const totalPl=lam==='A'
+      ?engagedA.reduce((a,s)=>a+(s.lamelaA.placenoB||0),0)
+      :lam==='B'
+      ?engagedB.reduce((a,s)=>a+(s.lamelaB.placenoB||0),0)
+      :stavke.filter(s=>s.lamelaA.izvodjac===i.naziv||s.lamelaB.izvodjac===i.naziv).reduce((a,s)=>{
+          let p=0;
+          if(s.lamelaA.izvodjac===i.naziv)p+=s.lamelaA.placenoB||0;
+          if(s.lamelaB.izvodjac===i.naziv)p+=s.lamelaB.placenoB||0;
+          return a+p;
+        },0);
+    // Lamela badge prikaz
+    const hasA=engagedA.length>0, hasB=engagedB.length>0;
+    const lamBadge=hasA&&hasB
+      ?`<span class="badge b-done" style="font-size:9px">A+B</span>`
+      :hasA?`<span class="badge b-act" style="font-size:9px">A</span>`
+      :hasB?`<span class="badge b-mid" style="font-size:9px">B</span>`:'';
     return`<div style="background:#fff;border:1px solid #ccc9c2;border-radius:8px;padding:13px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
         <div style="width:36px;height:36px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#185FA5;flex-shrink:0">${i.naziv.slice(0,2).toUpperCase()}</div>
-        <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.naziv)}</div>
-        ${i.kontakt?`<div style="font-size:11px;color:#5f5e5a">${esc(i.kontakt)}</div>`:''}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.naziv)}</div>
+          <div style="margin-top:2px">${lamBadge}</div>
         </div>
       </div>
+      ${i.kontakt?`<div style="font-size:11px;color:#5f5e5a;margin-bottom:3px">👤 ${esc(i.kontakt)}</div>`:''}
       ${i.telefon?`<div style="font-size:11px;color:#5f5e5a;margin-bottom:3px">📞 ${esc(i.telefon)}</div>`:''}
       ${i.email?`<div style="font-size:11px;color:#5f5e5a;margin-bottom:3px">✉ ${esc(i.email)}</div>`:''}
       ${engaged.length?`<div style="font-size:10.5px;color:#5f5e5a;margin-top:6px;padding-top:6px;border-top:1px solid #ebe8e1">${engaged.length} stavki | Plaćeno: <strong style="color:#185FA5">${fmt(totalPl)} €</strong></div>`:''}
@@ -585,7 +616,7 @@ function rIzv(){
         <button class="btn btn-del" onclick="delIzv(${i.id})">Obriši</button>
       </div>
     </div>`;
-  }).join('');
+  }).filter(Boolean).join('');
 }
 
 // ===== GANTT =====
@@ -765,19 +796,30 @@ function oM(type,id){
       <div class="divl"></div>
       <!-- Lamela tabs -->
       <div class="lam-tabs">
-        <div class="lam-tab active" onclick="swLam('la','lb',this)">🅐 Lamela A</div>
-        <div class="lam-tab" onclick="swLam('lb','la',this)">🅑 Lamela B</div>
+        <div class="lam-tab active" onclick="swLam('la','lb','lc',this)">🅐 Lamela A</div>
+        <div class="lam-tab" onclick="swLam('lb','la','lc',this)">🅑 Lamela B</div>
+        <div class="lam-tab" onclick="swLam('lc','la','lb',this)" style="background:#e8f5e9;color:#3B6D11">A+B isti izvođač</div>
       </div>
       <div id="lam-la" class="lam-panel active">${lamPanel('la-','la','A','#185FA5')}</div>
       <div id="lam-lb" class="lam-panel">${lamPanel('lb-','lb','B','#3B6D11')}</div>
+      <div id="lam-lc" class="lam-panel">
+        <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:7px;padding:12px;margin-bottom:9px">
+          <div style="font-size:11px;font-weight:600;color:#3B6D11;margin-bottom:9px">A+B — Isti izvođač, iste uslove unesite jednom i primeniće se na obe lamele</div>
+          ${lamPanel('lc-',la,'A+B','#3B6D11')}
+        </div>
+      </div>
       <div class="mf"><button class="btn btn-s" onclick="cM()">Otkaži</button><button class="btn btn-p" onclick="saveSt(${id||''})">Sačuvaj</button></div>`;
   }
   ow.classList.add('open');
 }
 
-function swLam(show,hide,tab){
-  document.getElementById('lam-'+show).classList.add('active');
-  document.getElementById('lam-'+hide).classList.remove('active');
+function swLam(show,hide1,hide2,tab){
+  ['la','lb','lc'].forEach(id=>{
+    const el=document.getElementById('lam-'+id);
+    if(el) el.classList.remove('active');
+  });
+  const el=document.getElementById('lam-'+show);
+  if(el) el.classList.add('active');
   tab.parentElement.querySelectorAll('.lam-tab').forEach(t=>t.classList.remove('active'));
   tab.classList.add('active');
 }
@@ -845,8 +887,17 @@ function delIzv(id, fromModal){
 }
 
 function saveSt(id){
-  const la=getLamData('la-'), lb=getLamData('lb-');
-  // Kalkuliši neto/bruto po lameli
+  // Detect which panel is active
+  const activePanel=document.querySelector('#lam-la.active,#lam-lb.active,#lam-lc.active');
+  const isAB=activePanel&&activePanel.id==='lam-lc';
+  let la,lb;
+  if(isAB){
+    // A+B: copy same data to both lamelas
+    const base=getLamData('lc-');
+    la={...base};lb={...base};
+  } else {
+    la=getLamData('la-');lb=getLamData('lb-');
+  }
   const calcLam=l=>{
     const v=l.ugovorenaUnos;
     if(!v){l.neto=0;l.bruto=0;l.pdv=0;}
