@@ -215,7 +215,10 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
 .g-row{display:flex;align-items:center;margin-bottom:2px;min-height:26px;min-width:700px}
 .g-rl{width:200px;flex-shrink:0;font-size:11px;padding:1px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .g-track{flex:1;position:relative;height:18px}
-.g-bar{position:absolute;height:14px;top:2px;border-radius:3px;display:flex;align-items:center;padding:0 5px;min-width:4px}
+.g-bar{position:absolute;height:14px;top:2px;border-radius:3px;display:flex;align-items:center;padding:0 5px;min-width:4px;cursor:grab;user-select:none}
+.g-bar:hover{filter:brightness(1.12)}
+.g-bar:active{cursor:grabbing;filter:brightness(0.9)}
+.g-tooltip{position:fixed;background:#1E3A5F;color:#fff;font-size:11px;padding:6px 10px;border-radius:6px;pointer-events:none;z-index:999;display:none;line-height:1.5;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.3)}
 /* Gantt bars: A bars blue, B bars green, per lam selection */
 .g-bar.c-a-act{background:var(--la)}
 .g-bar.c-a-don{background:#0D47A1}
@@ -252,8 +255,10 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="izvodjaci"><span class="ni-icon">👷</span>Izvođači</div>
     <div class="ni" data-page="gantt"><span class="ni-icon">▬</span>Gantt</div>
     <div class="ni" data-page="situacije"><span class="ni-icon">₿</span>Situacije</div>
+    <div class="ni" data-page="kasnjenja"><span class="ni-icon">⚠</span>Kašnjenja</div>
+    <div class="ni" data-page="kalkulator"><span class="ni-icon">📊</span>Kalkulator</div>
   </div>
-  <div class="sver">v8.0 — Dacić Prom d.o.o.</div>
+  <div class="sver">v9.0 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -281,6 +286,12 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
           <select id="fp"><option value="">Prioritet</option><option>Visok</option><option>Srednji</option><option>Nizak</option></select>
           <select id="ftp"><option value="">Tip cene</option><option value="NETO">NETO</option><option value="BRUTO">BRUTO</option></select>
           <select id="fugo"><option value="">Status ugovora</option><option value="da">Ugovoreno</option><option value="ne">Neugovoreno</option></select>
+          <div style="display:flex;gap:3px;margin-left:4px">
+            <button class="tb-btn active" id="fi-sve" onclick="setFiLam('sve',this)" style="height:27px;font-size:11px;padding:0 8px">Svi izv.</button>
+            <button class="tb-btn" id="fi-a" onclick="setFiLam('A',this)" style="height:27px;font-size:11px;padding:0 8px;background:var(--la-light);color:var(--la);border-color:var(--la-border)">A</button>
+            <button class="tb-btn" id="fi-b" onclick="setFiLam('B',this)" style="height:27px;font-size:11px;padding:0 8px;background:var(--lb-light);color:var(--lb);border-color:var(--lb-border)">B</button>
+            <button class="tb-btn" id="fi-ab" onclick="setFiLam('AB',this)" style="height:27px;font-size:11px;padding:0 8px;background:var(--lab-light);color:var(--lab);border-color:var(--lab-border)">A+B</button>
+          </div>
           <button class="btn btn-p" style="margin-left:auto;height:27px;padding:0 11px;font-size:12px" id="btn-nova-stavka">+ Nova stavka</button>
         </div>
         <div style="overflow-x:auto">
@@ -355,10 +366,145 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
         </div>
       </div>
     </div>
-  </div>
-</div>
+
+    <!-- KAŠNJENJA -->
+    <div class="page" id="page-kasnjenja">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px">
+        <div style="font-size:12px;color:var(--text2)">Stavke čiji je rok istekao a status nije Završeno. Klikni na red za direktan prelaz na predmer.</div>
+        <button class="btn btn-p" id="btn-kas-pdf" style="font-size:12px;height:28px;padding:0 12px">↓ PDF izveštaj kašnjenja</button>
+      </div>
+      <div class="tbox">
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr class="hdr-group">
+              <th>R.br.</th><th>Opis radova/materijala</th><th>Lamela</th><th>Izvođač</th>
+              <th>Rok završetka</th><th>Kašnjenje</th><th>Status</th><th>Prioritet</th><th>Plaćeno</th><th>Preostalo</th>
+            </tr></thead>
+            <tbody id="kas-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- KALKULATOR ISPLATIVOSTI -->
+    <div class="page" id="page-kalkulator">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <!-- PRIHODI -->
+        <div>
+          <div class="sec">Prihodi od prodaje</div>
+          <div class="tbox" style="padding:14px">
+            <div style="font-size:11px;font-weight:600;color:var(--la);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--la-border)">STANOVI — 7.756 m²</div>
+            <div class="fg"><label>Cena po m² (€)</label><input type="number" id="kc-stan" value="1800" oninput="rKalk()" placeholder="€/m²"></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
+              <span style="color:var(--text2)">Površina</span><strong>7.756 m²</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;font-weight:700;color:var(--la)">
+              <span>Prihod stanovi</span><span id="kp-stan">—</span>
+            </div>
+
+            <div style="font-size:11px;font-weight:600;color:var(--la);margin:12px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--la-border)">GARAŽE — 125 kom × 14.000 €</div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
+              <span style="color:var(--text2)">Fiksna cena/garaži</span><strong>14.000 €</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;font-weight:700;color:var(--la)">
+              <span>Prihod garaže</span><span id="kp-gar">1.750.000 €</span>
+            </div>
+
+            <div style="font-size:11px;font-weight:600;color:var(--la);margin:12px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--la-border)">OSTAVE — 431 m² × 1.000 €/m²</div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
+              <span style="color:var(--text2)">Fiksna cena/m²</span><strong>1.000 €</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;font-weight:700;color:var(--la)">
+              <span>Prihod ostave</span><span id="kp-ost">431.000 €</span>
+            </div>
+
+            <div style="background:var(--la-light);border:1px solid var(--la-border);border-radius:7px;padding:12px;margin-top:10px">
+              <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:var(--la)">
+                <span>UKUPNI PRIHODI</span><span id="kp-total">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TROŠKOVI + MARGINA -->
+        <div>
+          <div class="sec">Troškovi gradnje i margina</div>
+          <div class="tbox" style="padding:14px">
+            <div style="font-size:11px;font-weight:600;color:var(--fin-pr);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #FFCCBC">TROŠKOVI IZ PREDMERA</div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
+              <span style="color:var(--text2)">Ukupno predviđeno (BRUTO)</span><span id="kt-pred">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
+              <span style="color:var(--text2)">Ugovoreno (BRUTO)</span><span id="kt-ugo">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
+              <span style="color:var(--text2)">Plaćeno do sada</span><span id="kt-pl" style="color:var(--la)">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0">
+              <span style="color:var(--text2)">Preostalo za platiti</span><span id="kt-pr" style="color:var(--fin-pr)">—</span>
+            </div>
+
+            <div style="font-size:11px;font-weight:600;color:var(--fin-pr);margin:12px 0 10px;padding-bottom:6px;border-bottom:2px solid #FFCCBC">DODATNI TROŠKOVI</div>
+            <div class="fg"><label>Troškovi prodaje / marketinga (€)</label><input type="number" id="kd-prod" value="0" oninput="rKalk()"></div>
+            <div class="fg"><label>Ostali nepredviđeni (€)</label><input type="number" id="kd-ostali" value="0" oninput="rKalk()"></div>
+
+            <div id="k-margina-box" style="border-radius:7px;padding:14px;margin-top:10px;border:1px solid">
+              <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
+                <span>Ukupni troškovi</span><span id="km-troskovi" style="font-weight:600">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
+                <span>Ukupni prihodi</span><span id="km-prihodi" style="font-weight:600">—</span>
+              </div>
+              <div style="border-top:1px solid;padding-top:8px;margin-top:4px">
+                <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700">
+                  <span>MARGINA (bruto)</span><span id="km-margina">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px">
+                  <span>Margina %</span><span id="km-posto" style="font-weight:600">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:2px">
+                  <span>Prihod po m² (stanovi)</span><span id="km-pm2">—</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:12px;padding:10px;background:var(--bg2);border-radius:6px;font-size:11px;color:var(--text2)">
+              💡 Kalkulacija koristi ugovorenu cenu gde postoji, predviđenu gde ne. Margina ne uključuje PDV koji se može refundovati.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Situacija po izvođaču -->
+      <div style="margin-top:16px">
+        <div class="sec" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Export situacija po izvođaču</span>
+          <div style="display:flex;gap:6px">
+            <select id="kk-izv" style="font-size:12px;padding:3px 8px;height:27px;border-radius:6px;border:1px solid var(--border);background:#fff"></select>
+            <select id="kk-lam" style="font-size:12px;padding:3px 8px;height:27px;border-radius:6px;border:1px solid var(--border);background:#fff">
+              <option value="">Sve lamele</option><option value="A">Lamela A</option><option value="B">Lamela B</option><option value="Oba">A+B</option>
+            </select>
+            <button class="btn btn-p" onclick="exportSitPDF()" style="font-size:12px;height:27px;padding:0 12px">↓ PDF po izvođaču</button>
+          </div>
+        </div>
+        <div class="tbox">
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr class="hdr-group">
+                <th>#</th><th>Stavka</th><th>Lamela</th><th>Iznos BRUTO (€)</th><th>Datum</th><th>Napomena</th>
+              </tr></thead>
+              <tbody id="kk-body"></tbody>
+            </table>
+          </div>
+          <div id="kk-sum" style="padding:10px 14px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;font-size:13px;font-weight:600;background:#fafaf8"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- content -->
 </div>
 <div class="modal-wrap" id="mwrap"><div class="modal" id="mcont"></div></div>
+<div class="g-tooltip" id="g-tooltip"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ===== LOGO =====
@@ -564,7 +710,7 @@ function nav(pg){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   document.querySelector('.ni[data-page="'+pg+'"]').classList.add('active');
   document.getElementById('page-'+pg).classList.add('active');
-  const nm={home:'Home',predmer:'Predmer',izvodjaci:'Izvođači',gantt:'Gantt',situacije:'Situacije'};
+  const nm={home:'Home',predmer:'Predmer',izvodjaci:'Izvođači',gantt:'Gantt',situacije:'Situacije',kasnjenja:'⚠ Kašnjenja',kalkulator:'Kalkulator isplativosti'};
   document.getElementById('ptitle').textContent=nm[pg]||pg;
 }
 
@@ -606,6 +752,10 @@ function rStavke(){
     if(ftp&&lamO.tipCene!==ftp)return false;
     if(fugo==='da'&&s.ugovoreno!=='Ugovoreno')return false;
     if(fugo==='ne'&&s.ugovoreno==='Ugovoreno')return false;
+    // Filter po izvođaču u predmeru
+    if(fiLam==='A'&&!s.lamelaA.izvodjac)return false;
+    if(fiLam==='B'&&!s.lamelaB.izvodjac)return false;
+    if(fiLam==='AB'&&!(s.lamelaA.izvodjac&&s.lamelaB.izvodjac))return false;
     return true;
   });
   if(sc){
@@ -623,6 +773,7 @@ function rStavke(){
       return sd==='asc'?(va<vb?-1:va>vb?1:0):(va<vb?1:va>vb?-1:0);
     });
   }
+  const today=new Date();today.setHours(0,0,0,0);
   document.getElementById('st-body').innerHTML=fil.map(s=>{
     const predN=s.predvidjena||0;
     const predB=predN;
@@ -631,10 +782,16 @@ function rStavke(){
     const st=getStatus(s), pri=getPrioritet(s);
     const hl=hlRow===s.id;
     const lamTd=lam==='A'?'td-a':lam==='B'?'td-b':'td-a';
-    return`<tr class="st-row${hl?' highlighted':''}" data-id="${s.id}">
-      <td style="text-align:center;color:#5f5e5a">${s.id}</td>
+    // Kašnjenje: provjeri aktuelnu lamelu
+    const checkLam=lam==='B'?s.lamelaB:s.lamelaA;
+    const rok=checkLam.zavrsetak?new Date(checkLam.zavrsetak):null;
+    rok&&rok.setHours(0,0,0,0);
+    const isOverdue=rok&&rok<today&&checkLam.status!=='Završeno';
+    const overdueStyle=isOverdue?'background:#FFF0F0!important;border-left:3px solid var(--danger)':'';
+    return`<tr class="st-row${hl?' highlighted':''}" data-id="${s.id}" style="${!hl&&isOverdue?'background:#FFF0F0;border-left:3px solid var(--danger)':''}">
+      <td style="text-align:center;color:var(--text2)">${s.id}${isOverdue?'<br><span style="color:var(--danger);font-size:9px">⚠</span>':''}</td>
       <td style="font-size:10.5px;color:#5f5e5a" title="${esc(s.kat)}">${s.kat}</td>
-      <td title="${esc(s.naziv)}" style="font-weight:500">${s.naziv}</td>
+      <td title="${esc(s.naziv)}" style="font-weight:500">${s.naziv}${isOverdue?'<br><span style="font-size:9px;color:var(--danger);font-weight:400">Rok istekao</span>':''}</td>
       <td style="font-size:10.5px">${getIzvLabel(s)}</td>
       <td style="text-align:center;color:#5f5e5a">${s.jedMere||'—'}</td>
       <td style="text-align:right;color:#5f5e5a">${s.kolicina||'—'}</td>
@@ -773,7 +930,7 @@ function rGantt(){
       const sm=new Date(lobj.pocetak).getTime(),em=new Date(lobj.zavrsetak).getTime();
       if(em<sMs||sm>eMs)return;
       const prefix=isA?'c-a-':'c-b-';
-      rows.push({naziv:s.naziv+(lam==='sve'?' ('+lbl+')':''),status:lobj.status,posto:lobj.posto||0,sm,em,prefix});
+      rows.push({s,lbl,naziv:s.naziv+(lam==='sve'?' ('+lbl+')':''),status:lobj.status,posto:lobj.posto||0,sm,em,prefix});
     };
     if(lam==='A'||lam==='sve') addRow(s.lamelaA,'A',true);
     if(lam==='B'||lam==='sve') addRow(s.lamelaB,'B',false);
@@ -782,12 +939,18 @@ function rGantt(){
   let html=`<div class="g-header"><div class="g-lc">Stavka</div><div class="g-months">${months.map(m=>`<div class="g-mon">${m}</div>`).join('')}</div></div>`;
   if(!rows.length)html+='<div style="padding:16px;font-size:12px;color:#5f5e5a">Nema stavki sa datumima u ovom periodu.</div>';
   rows.forEach(r=>{
+    const s=r.s;
     const l=Math.max(0,Math.round((r.sm-sMs)/tMs*100));
     const w=Math.max(1,Math.round((r.em-r.sm)/tMs*100));
     const cls=r.prefix+(r.status==='Završeno'?'don':r.status==='U toku'?'act':'todo');
+    const stavkaId=s.id, isARow=(lam==='B'?false:lam==='sve'?true:true);
     html+=`<div class="g-row"><div class="g-rl" title="${esc(r.naziv)}">${r.naziv}</div><div class="g-track" style="position:relative">`;
     if(today>=sD&&today<=eD)html+=`<div class="today-line" style="left:${tdP}%"></div>`;
-    html+=`<div class="g-bar ${cls}" style="left:${l}%;width:${w}%"><span class="g-bl">${r.posto}%</span></div></div></div>`;
+    html+=`<div class="g-bar ${cls}" style="left:${l}%;width:${w}%" 
+      data-sid="${stavkaId}" data-lbl="${r.lbl}" data-sm="${r.sm}" data-em="${r.em}"
+      onmouseenter="gTip(event,this)" onmouseleave="gTipH()"
+      onmousedown="gDragStart(event,this)">
+      <span class="g-bl">${r.posto}%</span></div></div></div>`;
   });
   document.getElementById('gantt-container').innerHTML=`<div class="gantt-wrap">${html}</div>`;
 }
@@ -1088,8 +1251,276 @@ function exportPDF(){
   else alert('Dozvoli pop-up prozore za PDF export.');
 }
 
+// ===== GANTT TOOLTIP & DRAG =====
+const tooltip=document.getElementById('g-tooltip');
+function gTip(e,el){
+  const sid=parseInt(el.dataset.sid), lbl=el.dataset.lbl;
+  const s=stavke.find(x=>x.id===sid);if(!s)return;
+  const lo=lbl==='B'?s.lamelaB:s.lamelaA;
+  const diff=Math.round((new Date(lo.zavrsetak)-new Date(lo.pocetak))/(1000*60*60*24));
+  if(tooltip){
+    tooltip.innerHTML=`<strong>${esc(s.naziv)}</strong> — Lamela ${lbl}<br>
+      ${lo.izvodjac?'Izvođač: '+esc(lo.izvodjac)+'<br>':''}
+      ${fd(lo.pocetak)} → ${fd(lo.zavrsetak)} (${diff} dana)<br>
+      Status: ${lo.status} | ${lo.posto||0}% završeno`;
+    tooltip.style.display='block';
+    gTipMove(e);
+  }
+}
+function gTipMove(e){
+  if(tooltip){tooltip.style.left=(e.clientX+14)+'px';tooltip.style.top=(e.clientY-10)+'px';}
+}
+function gTipH(){if(tooltip)tooltip.style.display='none';}
+document.addEventListener('mousemove',gTipMove);
+
+let _drag=null;
+function gDragStart(e,el){
+  e.preventDefault();
+  const sid=parseInt(el.dataset.sid), lbl=el.dataset.lbl;
+  const s=stavke.find(x=>x.id===sid);if(!s)return;
+  const lo=lbl==='B'?s.lamelaB:s.lamelaA;
+  const track=el.parentElement;
+  const tRect=track.getBoundingClientRect();
+  const startX=e.clientX, startLeft=parseFloat(el.style.left);
+  const durMs=new Date(lo.zavrsetak)-new Date(lo.pocetak);
+  // Get current zoom range
+  const zoom=document.getElementById('g-zoom').value;
+  let sD,eD;
+  if(zoom==='all'){sD=new Date('2023-01-01');eD=new Date('2026-07-01');}
+  else{sD=new Date(zoom+'-01-01');eD=new Date(zoom+'-12-31');}
+  const tMs=eD.getTime()-sD.getTime();
+
+  el.style.opacity='0.75';el.style.zIndex='10';
+  _drag={el,lo,s,lbl,startX,startLeft,tRect,tMs,sD,durMs};
+
+  function onMove(ev){
+    if(!_drag)return;
+    const dx=ev.clientX-_drag.startX;
+    const dPct=dx/_drag.tRect.width*100;
+    const newLeft=Math.max(0,Math.min(99,_drag.startLeft+dPct));
+    el.style.left=newLeft+'%';
+    // Calculate new start date
+    const newSMs=_drag.sD.getTime()+newLeft/100*_drag.tMs;
+    const newEMs=newSMs+_drag.durMs;
+    const newPoc=new Date(newSMs).toISOString().slice(0,10);
+    const newZav=new Date(newEMs).toISOString().slice(0,10);
+    if(tooltip){tooltip.innerHTML=`<strong>Pomeraš:</strong> ${newPoc} → ${newZav}`;}
+  }
+  function onUp(ev){
+    if(!_drag)return;
+    const dx=ev.clientX-_drag.startX;
+    const dPct=dx/_drag.tRect.width*100;
+    const newLeft=Math.max(0,Math.min(99,_drag.startLeft+dPct));
+    const newSMs=_drag.sD.getTime()+newLeft/100*_drag.tMs;
+    const newEMs=newSMs+_drag.durMs;
+    _drag.lo.pocetak=new Date(newSMs).toISOString().slice(0,10);
+    _drag.lo.zavrsetak=new Date(newEMs).toISOString().slice(0,10);
+    sv(SK,stavke);
+    el.style.opacity='';el.style.zIndex='';
+    _drag=null;
+    document.removeEventListener('mousemove',onMove);
+    document.removeEventListener('mouseup',onUp);
+    rGantt();rKasnjenja();
+  }
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+}
+
+// ===== FILTER IZVOĐAČ U PREDMERU =====
+let fiLam='sve';
+function setFiLam(val, btn){
+  fiLam=val;
+  document.querySelectorAll('#fi-sve,#fi-a,#fi-b,#fi-ab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  rStavke();
+}
+
+// ===== KAŠNJENJA =====
+function rKasnjenja(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const rows=[];
+  stavke.forEach(s=>{
+    const addKas=(lobj,lbl)=>{
+      if(!lobj.zavrsetak||lobj.status==='Završeno') return;
+      const rok=new Date(lobj.zavrsetak); rok.setHours(0,0,0,0);
+      if(rok>=today) return;
+      const diff=Math.round((today-rok)/(1000*60*60*24));
+      rows.push({s,lbl,lobj,diff,rok});
+    };
+    if(lam==='A'||lam==='sve') addKas(s.lamelaA,'A');
+    if(lam==='B'||lam==='sve') addKas(s.lamelaB,'B');
+  });
+  rows.sort((a,b)=>b.diff-a.diff);
+  const body=document.getElementById('kas-body');
+  if(!body) return;
+  body.innerHTML=rows.map(({s,lbl,lobj,diff,rok})=>{
+    const urgCls=diff>90?'color:#C62828;font-weight:700':diff>30?'color:#E65100;font-weight:600':'color:#854F0B';
+    const pl=lobj.placenoB||0;
+    const ub=lobj.ugovorenaUnos?calcBruto(lobj.ugovorenaUnos,lobj.tipCene):s.predvidjena||0;
+    return`<tr style="cursor:pointer;background:#FFF5F5" onclick="nav('predmer');setTimeout(()=>{hlRow=${s.id};rStavke();},100)">
+      <td style="text-align:center;color:var(--text2)">${s.id}</td>
+      <td style="font-weight:500">${esc(s.naziv)}</td>
+      <td><span class="badge ${lbl==='A'?'b-la':'b-lb'}">${lbl}</span></td>
+      <td style="font-size:11px">${esc(lobj.izvodjac||'—')}</td>
+      <td>${fd(lobj.zavrsetak)}</td>
+      <td style="${urgCls}">⚠ ${diff} dana</td>
+      <td><span class="badge b-act">${lobj.status}</span></td>
+      <td><span class="badge ${lobj.prioritet==='Visok'?'b-hi':lobj.prioritet==='Srednji'?'b-mid':'b-lo'}">${lobj.prioritet}</span></td>
+      <td style="text-align:right;color:var(--la)">${fmt(pl)} €</td>
+      <td style="text-align:right;color:var(--fin-pr)">${fmt(Math.max(0,ub-pl))} €</td>
+    </tr>`;
+  }).join('');
+  if(!rows.length) body.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text2)">✅ Nema kašnjenja za odabranu lamelu</td></tr>';
+}
+
+// ===== KALKULATOR =====
+function rKalk(){
+  const stanM2=7756, garKom=125, garCena=14000, ostM2=431, ostCena=1000;
+  const cStan=parseFloat(document.getElementById('kc-stan')?.value)||0;
+  const pStan=stanM2*cStan;
+  const pGar=garKom*garCena;
+  const pOst=ostM2*ostCena;
+  const pTot=pStan+pGar+pOst;
+  const elSet=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  elSet('kp-stan', fmt(pStan)+' €');
+  elSet('kp-gar', fmt(pGar)+' €');
+  elSet('kp-ost', fmt(pOst)+' €');
+  elSet('kp-total', fmt(pTot)+' €');
+
+  // Troškovi
+  const tPred=stavke.reduce((a,s)=>a+(s.predvidjena||0),0);
+  const tUgo=stavke.reduce((a,s)=>a+getUgoB(s),0);
+  const tPl=stavke.reduce((a,s)=>a+getPl(s),0);
+  const tPr=tUgo-tPl;
+  const tDodProd=parseFloat(document.getElementById('kd-prod')?.value)||0;
+  const tDodOst=parseFloat(document.getElementById('kd-ostali')?.value)||0;
+  const tTot=tUgo+tDodProd+tDodOst;
+
+  elSet('kt-pred', fmt(tPred)+' €');
+  elSet('kt-ugo', fmt(tUgo)+' €');
+  elSet('kt-pl', fmt(tPl)+' €');
+  elSet('kt-pr', fmt(tPr)+' €');
+  elSet('km-troskovi', fmt(tTot)+' €');
+  elSet('km-prihodi', fmt(pTot)+' €');
+
+  const margina=pTot-tTot;
+  const posto=tTot?Math.round(margina/tTot*100):0;
+  const pm2=stanM2?Math.round(margina/stanM2):0;
+  elSet('km-margina', (margina>=0?'+ ':'- ')+fmt(Math.abs(margina))+' €');
+  elSet('km-posto', posto+'%');
+  elSet('km-pm2', fmt(pm2)+' €/m²');
+
+  const box=document.getElementById('k-margina-box');
+  if(box){
+    if(margina>=0){
+      box.style.background='var(--lb-light)';box.style.borderColor='var(--lb-border)';
+      box.querySelector('#km-margina').style.color='var(--lb)';
+    } else {
+      box.style.background='#FFEBEE';box.style.borderColor='#FFCDD2';
+      box.querySelector('#km-margina').style.color='var(--danger)';
+    }
+  }
+  rKalkSit();
+}
+
+function rKalkSit(){
+  const sel=document.getElementById('kk-izv');
+  const lamSel=document.getElementById('kk-lam')?.value||'';
+  if(!sel) return;
+  const cur=sel.value;
+  const izvNames=[...new Set(sit.map(s=>s.izvodjac).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">Svi izvođači</option>'+izvNames.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('');
+  const izvF=sel.value;
+  const fil=sit.filter(s=>(!izvF||s.izvodjac===izvF)&&(!lamSel||s.lamela===lamSel||s.lamela==='Oba'));
+  const body=document.getElementById('kk-body');
+  const sumEl=document.getElementById('kk-sum');
+  if(!body) return;
+  body.innerHTML=fil.map(s=>{
+    const st=stavke.find(x=>x.id===s.stavkaId);
+    return`<tr>
+      <td style="color:var(--text2)">#${s.id}</td>
+      <td>${st?esc(st.naziv):'—'}</td>
+      <td><span class="badge ${s.lamela==='A'?'b-la':s.lamela==='B'?'b-lb':'b-lab'}">${s.lamela}</span></td>
+      <td style="text-align:right;font-weight:600;color:var(--la)">${fmt(s.iznos)} €</td>
+      <td>${fd(s.datum)}</td>
+      <td style="font-size:11px;color:var(--text2)">${esc(s.napomena||'')}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;padding:14px;color:var(--text2)">Nema situacija za ovaj filter</td></tr>';
+  const sum=fil.reduce((a,s)=>a+(s.iznos||0),0);
+  if(sumEl) sumEl.innerHTML=`Ukupno plaćeno: <span style="color:var(--la);margin-left:8px">${fmt(sum)} €</span>`;
+}
+
+// ===== EXPORT SITUACIJA PO IZVOĐAČU PDF =====
+function exportSitPDF(){
+  const izvF=document.getElementById('kk-izv')?.value||'';
+  const lamSel=document.getElementById('kk-lam')?.value||'';
+  const fil=sit.filter(s=>(!izvF||s.izvodjac===izvF)&&(!lamSel||s.lamela===lamSel||s.lamela==='Oba'));
+  if(!fil.length){alert('Nema situacija za ovaj filter.');return;}
+  const sum=fil.reduce((a,s)=>a+(s.iznos||0),0);
+  const dd=new Date(),ds=dd.getDate()+'.'+(dd.getMonth()+1)+'.'+dd.getFullYear();
+  const rows=fil.map(s=>{
+    const st=stavke.find(x=>x.id===s.stavkaId);
+    return`<tr><td>#${s.id}</td><td>${st?st.naziv:'—'}</td><td>${s.lamela}</td><td style="text-align:right;font-weight:bold">${fmt(s.iznos)} €</td><td>${fd(s.datum)}</td><td>${s.napomena||''}</td></tr>`;
+  }).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Situacije — ${izvF||'svi izvođači'}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:10px;padding:16px}h1{font-size:14px;color:#1558A0;margin-bottom:4px}
+  .sub{font-size:9px;color:#666;margin-bottom:14px}table{width:100%;border-collapse:collapse}
+  th{background:#E8F1FC;color:#1558A0;padding:4px 6px;text-align:left;font-size:9px;border:0.5px solid #AECBF0}
+  td{padding:3px 6px;border:0.5px solid #eee;font-size:9px}tr:nth-child(even)td{background:#fafafa}
+  .sum{text-align:right;font-size:12px;font-weight:bold;color:#1558A0;margin-top:10px;padding-top:8px;border-top:2px solid #1558A0}</style>
+  </head><body>
+  <h1>Situacije — ${izvF?esc(izvF):'Svi izvođači'}${lamSel?' | Lamela '+lamSel:''}</h1>
+  <div class="sub">8. Mart, Dacić Prom d.o.o. | Datum: ${ds} | Ukupno situacija: ${fil.length}</div>
+  <table><thead><tr><th>#</th><th>Stavka</th><th>Lamela</th><th>Iznos BRUTO</th><th>Datum</th><th>Napomena</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+  <div class="sum">UKUPNO PLAĆENO: ${fmt(sum)} €</div></body></html>`;
+  const w=window.open('','_blank','width=900,height=700');
+  if(w){w.document.write(html);w.document.close();setTimeout(()=>{w.focus();w.print();},500);}
+  else alert('Dozvoli pop-up za PDF.');
+}
+
+// ===== PDF KAŠNJENJA =====
+function exportKasPDF(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const rows=[];
+  stavke.forEach(s=>{
+    const addKas=(lobj,lbl)=>{
+      if(!lobj.zavrsetak||lobj.status==='Završeno') return;
+      const rok=new Date(lobj.zavrsetak);rok.setHours(0,0,0,0);
+      if(rok>=today) return;
+      const diff=Math.round((today-rok)/(1000*60*60*24));
+      rows.push({s,lbl,lobj,diff});
+    };
+    if(lam==='A'||lam==='sve') addKas(s.lamelaA,'A');
+    if(lam==='B'||lam==='sve') addKas(s.lamelaB,'B');
+  });
+  rows.sort((a,b)=>b.diff-a.diff);
+  if(!rows.length){alert('Nema kašnjenja za prikaz.');return;}
+  const dd=new Date(),ds=dd.getDate()+'.'+(dd.getMonth()+1)+'.'+dd.getFullYear();
+  const trs=rows.map(({s,lbl,lobj,diff})=>{
+    const col=diff>90?'#C62828':diff>30?'E65100':'#854F0B';
+    const pl=lobj.placenoB||0;
+    const ub=lobj.ugovorenaUnos?calcBruto(lobj.ugovorenaUnos,lobj.tipCene):s.predvidjena||0;
+    return`<tr><td>${s.id}</td><td>${s.naziv}</td><td>${lbl}</td><td>${lobj.izvodjac||'—'}</td><td>${fd(lobj.zavrsetak)}</td>
+    <td style="color:${col};font-weight:bold">${diff} dana</td><td>${lobj.status}</td>
+    <td style="text-align:right">${fmt(pl)} €</td><td style="text-align:right;color:#C62828">${fmt(Math.max(0,ub-pl))} €</td></tr>`;
+  }).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Kašnjenja — 8. Mart</title>
+  <style>body{font-family:Arial,sans-serif;font-size:9px;padding:14px}h1{font-size:13px;color:#C62828;margin-bottom:3px}
+  .sub{font-size:8px;color:#666;margin-bottom:12px}table{width:100%;border-collapse:collapse}
+  th{background:#FFEBEE;color:#C62828;padding:3px 5px;text-align:left;font-size:8px;border:0.5px solid #FFCDD2}
+  td{padding:2px 5px;border:0.5px solid #eee;font-size:8px}tr:nth-child(even)td{background:#fafafa}</style>
+  </head><body><h1>⚠ Kašnjenja — 8. Mart${lam!=='sve'?' | Lamela '+lam:''}</h1>
+  <div class="sub">Dacić Prom d.o.o. | ${ds} | Ukupno kašnjenja: ${rows.length}</div>
+  <table><thead><tr><th>R.br.</th><th>Opis radova</th><th>Lam.</th><th>Izvođač</th><th>Rok</th><th>Kašnjenje</th><th>Status</th><th>Plaćeno</th><th>Preostalo</th></tr></thead>
+  <tbody>${trs}</tbody></table></body></html>`;
+  const w=window.open('','_blank','width=1000,height=700');
+  if(w){w.document.write(html);w.document.close();setTimeout(()=>{w.focus();w.print();},500);}
+  else alert('Dozvoli pop-up za PDF.');
+}
+
 // ===== RENDER ALL =====
-function rAll(){rHome();rStavke();rSit();rIzv();rGantt();}
+function rAll(){rHome();rStavke();rSit();rIzv();rGantt();rKasnjenja();rKalk();}
 
 // ===== EVENTS =====
 document.querySelector('.sidebar').addEventListener('click',e=>{
@@ -1125,6 +1556,12 @@ document.getElementById('tbl-predmer').addEventListener('click',e=>{
 });
 document.getElementById('mwrap').addEventListener('click',e=>{if(e.target===document.getElementById('mwrap'))cM();});
 
+document.getElementById('btn-kas-pdf')?.addEventListener('click',exportKasPDF);
+document.getElementById('kc-stan')?.addEventListener('input',rKalk);
+document.getElementById('kd-prod')?.addEventListener('input',rKalk);
+document.getElementById('kd-ostali')?.addEventListener('input',rKalk);
+document.getElementById('kk-izv')?.addEventListener('change',rKalkSit);
+document.getElementById('kk-lam')?.addEventListener('change',rKalkSit);
 // Init
 document.body.classList.add('lam-sve');
 rAll();
