@@ -70,7 +70,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
   #page-kalkulator > div:first-child{grid-template-columns:1fr!important}
 }
 
-/* Tfoot suma row */
+/* Valuta card */
+.val-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 14px;border-top:3px solid var(--warn);margin-bottom:16px}
+.val-card .vc-title{font-size:11px;font-weight:700;color:var(--warn);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.val-item{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+.val-item:last-child{border-bottom:none}
+.val-item .vi-left{display:flex;flex-direction:column;gap:2px}
+.val-item .vi-izvr{font-weight:600}
+.val-item .vi-meta{font-size:10.5px;color:var(--text2)}
+.val-item .vi-right{text-align:right}
+.val-item .vi-iznos{font-weight:700;color:var(--fin-pr)}
+.val-item .vi-rok{font-size:10.5px}
+.val-item .vi-rok.overdue{color:var(--danger);font-weight:600}
+.val-item .vi-rok.soon{color:var(--warn);font-weight:500}
+.val-item .vi-rok.ok{color:var(--lb)}
+.b-paid{background:var(--lb-light);color:var(--lb);border:1px solid var(--lb-border)}
+.b-partial{background:#FFF3E0;color:var(--warn);border:1px solid #FFCC80}
+.b-unpaid{background:#FFEBEE;color:var(--danger);border:1px solid #FFCDD2}
+.b-overdue{background:var(--danger);color:#fff}
 tfoot tr.sum-row td{padding:6px 7px;font-weight:700;font-size:11.5px;background:#E8E5DE;border-top:2px solid #bbb}
 tfoot tr.sum-row td.sum-a{background:var(--la-light);color:var(--la)}
 tfoot tr.sum-row td.sum-b{background:var(--lb-light);color:var(--lb)}
@@ -328,6 +345,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
   <div class="content">
     <div class="page active" id="page-home">
       <div class="metrics" id="m-grid"></div>
+      <div id="valute-card"></div>
       <div class="sec">Po kategoriji (BRUTO iznosi)</div>
       <div class="cg" id="c-grid"></div>
     </div>
@@ -382,8 +400,9 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
       </div>
     </div>
     <div class="page" id="page-izvodjaci">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:11px">
-        <button class="btn btn-p" id="btn-novi-izv">+ Novi izvođač</button>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:11px;flex-wrap:wrap">
+        <button class="btn btn-s" id="btn-novi-izv" style="border-color:var(--la);color:var(--la)">+ Novi izvođač</button>
+        <button class="btn btn-p" id="btn-nova-racun" style="background:var(--lb);border-color:var(--lb)">+ Novi račun / situacija</button>
       </div>
       <div id="izv-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px"></div>
     </div>
@@ -413,7 +432,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
           <table>
             <thead>
               <tr class="hdr-group">
-                <th>#</th><th>Stavka</th><th>Lamela</th><th>Izvođač</th><th>Iznos BRUTO (€)</th><th>Datum</th><th>PDF Situacija</th><th>Napomena</th>
+                <th>#</th><th>Stavka</th><th>Lam.</th><th>Izvođač / Nadzorni</th><th>Iznos BRUTO</th><th>Datum</th><th>Rok plaćanja</th><th>Status</th><th>PDF</th><th>Napomena</th>
               </tr>
             </thead>
             <tbody id="sit-body"></tbody>
@@ -918,17 +937,27 @@ function rSit(){
   document.getElementById('sit-body').innerHTML=sit.slice().reverse().map(s=>{
     const st=stavke.find(x=>x.id===s.stavkaId);
     const pdfCell=s.pdfNaziv?`<span class="sit-pdf-link" onclick="viewSitPdf(${s.id})">📄 ${esc(s.pdfNaziv)}</span>`:'—';
+    const valSym=s.valuta==='EUR'?'€':s.valuta==='RSD'?'RSD':s.valuta==='USD'?'$':'€';
+    const today=new Date();today.setHours(0,0,0,0);
+    const rok=s.rokPlacanja?new Date(s.rokPlacanja):null;rok&&rok.setHours(0,0,0,0);
+    const diff=rok?Math.round((rok-today)/(1000*60*60*24)):null;
+    const rokStr=rok?(diff<0?`<span style="color:var(--danger);font-weight:600">⚠ ${fd(s.rokPlacanja)}</span>`:`<span style="color:${diff<=7?'var(--warn)':'var(--text2)'}">${fd(s.rokPlacanja)}</span>`):'—';
+    const stPl=s.statusPlacanja||'neplaceno';
+    const stBadge=stPl==='placeno'?'b-paid':stPl==='delimicno'?'b-partial':'b-unpaid';
+    const stTxt=stPl==='placeno'?'Plaćeno':stPl==='delimicno'?'Delimično':'Čeka';
     return`<tr>
-      <td style="color:#5f5e5a">#${s.id}</td>
-      <td title="${st?esc(st.naziv):''}">${st?st.naziv:'—'}</td>
-      <td><span class="badge b-act">${s.lamela}</span></td>
-      <td>${esc(s.izvodjac||'—')}</td>
-      <td style="text-align:right;font-weight:600;color:#185FA5">${fmt(s.iznos)} €</td>
+      <td style="color:var(--text2);font-size:10px">#${s.id}${s.brRacuna?`<br><span style="font-size:9px">${esc(s.brRacuna)}</span>`:''}</td>
+      <td title="${st?esc(st.naziv):''}" style="max-width:130px;overflow:hidden;text-overflow:ellipsis">${st?esc(st.naziv):'—'}</td>
+      <td><span class="badge ${s.lamela==='A'?'b-la':s.lamela==='B'?'b-lb':'b-lab'}">${s.lamela}</span></td>
+      <td style="font-size:11px">${esc(s.izvodjac||'—')}${s.nadzorni?`<br><span style="font-size:9px;color:var(--text2)">👁 ${esc(s.nadzorni)}</span>`:''}</td>
+      <td style="text-align:right;font-weight:700;color:var(--la)">${valSym} ${fmt(s.iznos)}</td>
       <td>${fd(s.datum)}</td>
+      <td>${rokStr}</td>
+      <td><span class="badge ${stBadge}" style="font-size:9px">${stTxt}</span></td>
       <td>${pdfCell}</td>
-      <td style="font-size:11px;color:#5f5e5a">${esc(s.napomena||'')}</td>
+      <td style="font-size:11px;color:var(--text2);max-width:100px;overflow:hidden;text-overflow:ellipsis">${esc(s.napomena||'')}</td>
     </tr>`;
-  }).join('');
+  }).join('') || '<tr><td colspan="10" style="text-align:center;padding:16px;color:var(--text2)">Nema evidentiranih situacija / računa</td></tr>';
 }
 function viewSitPdf(sid){
   const s=sit.find(x=>x.id===sid);if(!s||!s.pdfData)return alert('PDF nije dostupan.');
@@ -1069,25 +1098,69 @@ function oM(type,id){
   const ow=document.getElementById('mwrap'),mc=document.getElementById('mcont');
   window._pd={naziv:'',data:''};window._sitPdf={naziv:'',data:''};
 
-  if(type==='sit'){
-    mc.innerHTML=`<h2>Nova situacija</h2>
-      <div class="fg"><label>Stavka</label><select id="m-st">${stavke.map(s=>`<option value="${s.id}">${esc(s.naziv)}</option>`).join('')}</select></div>
+  if(type==='sit'||type==='racun'){
+    const today=new Date().toISOString().slice(0,10);
+    const d30=new Date(Date.now()+30*24*60*60*1000).toISOString().slice(0,10);
+    mc.innerHTML=`<h2>📋 Novi račun / privremena situacija</h2>
       <div class="fr">
-        <div class="fg"><label>Lamela</label><select id="m-lam"><option>Oba</option><option>A</option><option>B</option></select></div>
-        <div class="fg"><label>Izvođač</label><input id="m-izvr" list="m-dl" placeholder="Naziv"><datalist id="m-dl">${izv.map(i=>`<option>${esc(i.naziv)}</option>`).join('')}</datalist></div>
+        <div class="fg"><label>Izvođač *</label>
+          <select id="m-izvr-sel" onchange="onSitIzvChange(this.value)">
+            <option value="">— odaberi izvođača —</option>
+            ${izv.map(i=>`<option value="${esc(i.naziv)}">${esc(i.naziv)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="fg"><label>Lamela</label>
+          <select id="m-lam"><option value="Oba">Oba / nije određeno</option><option value="A">Lamela A</option><option value="B">Lamela B</option></select>
+        </div>
       </div>
-      <div class="fr">
-        <div class="fg"><label>Iznos BRUTO (€)</label><input id="m-iznos" type="number" placeholder="0" min="0"></div>
-        <div class="fg"><label>Datum</label><input id="m-dat" type="date"></div>
+      <div class="fg"><label>Stavka / radovi *</label>
+        <select id="m-st"><option value="">— odaberi stavku —</option>${stavke.map(s=>`<option value="${s.id}">${s.id}. ${esc(s.naziv)}</option>`).join('')}</select>
+      </div>
+      <div id="m-nadzorni-box" style="display:none">
+        <div class="fg"><label>Nadzorni organ (overava situaciju)</label>
+          <input id="m-nadzorni" placeholder="Ime i prezime / firma" style="background:var(--bg2)">
+          <div id="m-nadzorni-hint" style="font-size:10px;color:var(--text2);margin-top:2px"></div>
+        </div>
       </div>
       <div class="divl"></div>
-      <div class="fg"><label>📄 PDF situacija (opciono)</label>
-        <div class="upload-area" onclick="document.getElementById('m-sit-pdf').click()">Klikni za upload PDF</div>
-        <input type="file" id="m-sit-pdf" accept=".pdf" style="display:none" onchange="hSitPdf(this)">
-        <div id="m-sit-pds" style="font-size:11px;color:#3B6D11;margin-top:4px"></div>
+      <div class="fr3">
+        <div class="fg"><label>Iznos *</label><input id="m-iznos" type="number" placeholder="0.00" min="0" step="0.01" oninput="calcSitBruto()"></div>
+        <div class="fg"><label>Tip iznosa</label>
+          <select id="m-tip-iznos" onchange="calcSitBruto()">
+            <option value="BRUTO">BRUTO (sa PDV)</option>
+            <option value="NETO">NETO (+ PDV 20%)</option>
+          </select>
+        </div>
+        <div class="fg"><label>Valuta</label>
+          <select id="m-valuta"><option value="EUR">€ EUR</option><option value="RSD">RSD</option><option value="USD">$ USD</option></select>
+        </div>
       </div>
-      <div class="fg"><label>Napomena</label><textarea id="m-nap"></textarea></div>
-      <div class="mf"><button class="btn btn-s" onclick="cM()">Otkaži</button><button class="btn btn-p" onclick="saveSit()">Sačuvaj</button></div>`;
+      <div class="pdv-info" id="m-sit-pdv-info">Unesi iznos za kalkulaciju</div>
+      <div class="fr">
+        <div class="fg"><label>Datum ispostavljanja</label><input id="m-dat" type="date" value="${today}"></div>
+        <div class="fg"><label>⏰ Rok plaćanja (valuta)</label><input id="m-rok" type="date" value="${d30}"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Status plaćanja</label>
+          <select id="m-st-pl">
+            <option value="neplaceno">Nije plaćeno</option>
+            <option value="delimicno">Delimično plaćeno</option>
+            <option value="placeno">Plaćeno</option>
+          </select>
+        </div>
+        <div class="fg"><label>Plaćeno do sada (iznos)</label>
+          <input id="m-pl-iznos" type="number" value="0" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="fg"><label>Broj računa / situacije</label><input id="m-br-rac" placeholder="npr. PS-2025-001"></div>
+      <div class="divl"></div>
+      <div class="fg"><label>📄 PDF dokumentacija (opciono)</label>
+        <div class="upload-area" onclick="document.getElementById('m-sit-pdf').click()">Klikni za upload PDF (situacija, račun, overena dokumentacija)</div>
+        <input type="file" id="m-sit-pdf" accept=".pdf" style="display:none" onchange="hSitPdf(this)">
+        <div id="m-sit-pds" style="font-size:11px;color:var(--lb);margin-top:4px"></div>
+      </div>
+      <div class="fg"><label>Napomena</label><textarea id="m-nap" placeholder="Opis radova, period, posebne napomene..."></textarea></div>
+      <div class="mf"><button class="btn btn-s" onclick="cM()">Otkaži</button><button class="btn btn-p" onclick="saveSitFull()" style="background:var(--lb)">💾 Sačuvaj</button></div>`;
   }
   else if(type==='izv'){
     const d=id?izv.find(i=>i.id===id):{};
@@ -1095,15 +1168,27 @@ function oM(type,id){
     mc.innerHTML=`<h2>${id?'Uredi izvođača':'Novi izvođač'}</h2>
       <div class="fg"><label>Naziv firme *</label><input id="m-naziv" value="${esc(d.naziv||'')}"></div>
       <div class="fr">
+        <div class="fg"><label>PIB (poreski ID broj)</label><input id="m-pib" value="${esc(d.pib||'')}" placeholder="123456789"></div>
+        <div class="fg"><label>Matični broj</label><input id="m-mb" value="${esc(d.mb||'')}" placeholder="12345678"></div>
+      </div>
+      <div class="fr">
         <div class="fg"><label>Kontakt osoba</label><input id="m-kont" value="${esc(d.kontakt||'')}"></div>
         <div class="fg"><label>Telefon</label><input id="m-tel" value="${esc(d.telefon||'')}"></div>
       </div>
       <div class="fg"><label>Email</label><input id="m-email" value="${esc(d.email||'')}"></div>
+      <div class="divl"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Nadzorni organ / inspektor</div>
+      <div class="fr">
+        <div class="fg"><label>Ime i prezime nadzornog organa</label><input id="m-nadzorni-ime" value="${esc(d.nadzorniIme||'')}" placeholder="npr. Petar Petrović"></div>
+        <div class="fg"><label>Telefon nadzornog organa</label><input id="m-nadzorni-tel" value="${esc(d.nadzorniTel||'')}" placeholder="+381..."></div>
+      </div>
+      <div class="fg"><label>Firma / organizacija nadzornog organa</label><input id="m-nadzorni-firma" value="${esc(d.nadzorniFirma||'')}" placeholder="npr. Nadzor d.o.o."></div>
+      <div class="divl"></div>
       <div class="fg"><label>Napomena / opis angažmana</label><textarea id="m-nap">${esc(d.napomena||'')}</textarea></div>
       <div class="fg"><label>Ugovor (PDF, opciono)</label>
         <div class="upload-area" onclick="document.getElementById('m-pdf').click()">${d.ugovorNaziv?'📄 '+esc(d.ugovorNaziv):'Klikni za upload PDF ugovora'}</div>
         <input type="file" id="m-pdf" accept=".pdf" style="display:none" onchange="hPdf(this)">
-        <div id="m-pds" style="font-size:11px;color:#3B6D11;margin-top:3px">${d.ugovorNaziv?'Priložen: '+esc(d.ugovorNaziv):''}</div>
+        <div id="m-pds" style="font-size:11px;color:var(--lb);margin-top:3px">${d.ugovorNaziv?'Priložen: '+esc(d.ugovorNaziv):''}</div>
       </div>
       <div class="mf mf-left">
         <div>${id?`<button class="btn btn-del" onclick="delIzv(${id},true)">🗑 Obriši izvođača</button>`:'&nbsp;'}</div>
@@ -1239,23 +1324,136 @@ function getLamData(pfx){
   };
 }
 
-function saveSit(){
-  const sid=parseInt(document.getElementById('m-st').value);
-  const iznos=parseFloat(document.getElementById('m-iznos').value)||0;
+// ===== SIT HELPER FUNCTIONS =====
+function onSitIzvChange(naziv){
+  const box=document.getElementById('m-nadzorni-box');
+  const inp=document.getElementById('m-nadzorni');
+  const hint=document.getElementById('m-nadzorni-hint');
+  if(!naziv||!box){return;}
+  const i=izv.find(x=>x.naziv===naziv);
+  if(i&&(i.nadzorniIme||i.nadzorniFirma)){
+    box.style.display='block';
+    if(inp) inp.value=(i.nadzorniIme||'')+(i.nadzorniFirma?' — '+i.nadzorniFirma:'');
+    if(hint) hint.textContent=i.nadzorniTel?'📞 '+i.nadzorniTel:'';
+  } else {
+    box.style.display='none';
+  }
+}
+
+function calcSitBruto(){
+  const val=parseFloat(document.getElementById('m-iznos')?.value)||0;
+  const tip=document.getElementById('m-tip-iznos')?.value||'BRUTO';
+  const el=document.getElementById('m-sit-pdv-info');
+  if(!el)return;
+  if(!val){el.innerHTML='Unesi iznos za kalkulaciju';return;}
+  if(tip==='NETO'){
+    const bruto=Math.round(val*1.2*100)/100;
+    const pdv=Math.round((bruto-val)*100)/100;
+    el.innerHTML=`NETO: <strong>${fmt(val)} €</strong> + PDV 20% (${fmt(pdv)} €) = BRUTO: <strong style="color:var(--la)">${fmt(bruto)} €</strong>`;
+  } else {
+    const neto=Math.round(val/1.2*100)/100;
+    const pdv=Math.round((val-neto)*100)/100;
+    el.innerHTML=`BRUTO: <strong>${fmt(val)} €</strong> → NETO: ${fmt(neto)} € + PDV: <strong style="color:var(--fin-pdv)">${fmt(pdv)} €</strong>`;
+  }
+}
+
+function saveSitFull(){
+  const izvNaziv=document.getElementById('m-izvr-sel')?.value||'';
+  const stavkaId=parseInt(document.getElementById('m-st')?.value)||0;
+  const iznos=parseFloat(document.getElementById('m-iznos')?.value)||0;
+  const tip=document.getElementById('m-tip-iznos')?.value||'BRUTO';
+  const valuta=document.getElementById('m-valuta')?.value||'EUR';
+  const iznosBruto=tip==='NETO'?Math.round(iznos*1.2*100)/100:iznos;
+  const iznosNeto=tip==='BRUTO'?Math.round(iznos/1.2*100)/100:iznos;
+  if(!izvNaziv){alert('Odaberite izvođača.');return;}
+  if(!stavkaId){alert('Odaberite stavku.');return;}
+  if(!iznos){alert('Unesite iznos.');return;}
   const sp=window._sitPdf||{naziv:'',data:''};
-  sit.push({id:nsi++,stavkaId:sid,lamela:document.getElementById('m-lam').value,izvodjac:document.getElementById('m-izvr').value,iznos,datum:document.getElementById('m-dat').value,pdfNaziv:sp.naziv,pdfData:sp.data,napomena:document.getElementById('m-nap').value});
+  const nadzorniEl=document.getElementById('m-nadzorni');
+  const nova={
+    id:nsi++, stavkaId, lamela:document.getElementById('m-lam')?.value||'Oba',
+    izvodjac:izvNaziv, iznos:iznosBruto, iznosNeto, tipIznosa:tip,
+    valuta, rokPlacanja:document.getElementById('m-rok')?.value||'',
+    statusPlacanja:document.getElementById('m-st-pl')?.value||'neplaceno',
+    placenoIznos:parseFloat(document.getElementById('m-pl-iznos')?.value)||0,
+    brRacuna:document.getElementById('m-br-rac')?.value||'',
+    nadzorni:nadzorniEl?.value||'',
+    datum:document.getElementById('m-dat')?.value||'',
+    pdfNaziv:sp.naziv, pdfData:sp.data,
+    napomena:document.getElementById('m-nap')?.value||''
+  };
+  sit.push(nova);
   // Update placenoB na stavci
-  const s=stavke.find(x=>x.id===sid);
+  const s=stavke.find(x=>x.id===stavkaId);
   if(s){
-    const lamVal=document.getElementById('m-lam').value;
-    if(lamVal==='A'||lamVal==='Oba') s.lamelaA.placenoB=(s.lamelaA.placenoB||0)+(lamVal==='Oba'?iznos/2:iznos);
-    if(lamVal==='B'||lamVal==='Oba') s.lamelaB.placenoB=(s.lamelaB.placenoB||0)+(lamVal==='Oba'?iznos/2:iznos);
+    const lamVal=nova.lamela;
+    const plPlaceno=nova.statusPlacanja==='placeno'?iznosBruto:nova.placenoIznos||0;
+    if(lamVal==='A'||lamVal==='Oba') s.lamelaA.placenoB=(s.lamelaA.placenoB||0)+(lamVal==='Oba'?plPlaceno/2:plPlaceno);
+    if(lamVal==='B'||lamVal==='Oba') s.lamelaB.placenoB=(s.lamelaB.placenoB||0)+(lamVal==='Oba'?plPlaceno/2:plPlaceno);
   }
   sv(SITK,sit);sv(SK,stavke);cM();rAll();
 }
 
+// Legacy saveSit for backward compat
+function saveSit(){saveSitFull();}
+
+// ===== VALUTE DASHBOARD =====
+function rValute(){
+  const el=document.getElementById('valute-card');if(!el)return;
+  const today=new Date();today.setHours(0,0,0,0);
+  const upcoming=sit.filter(s=>{
+    if(s.statusPlacanja==='placeno')return false;
+    if(!s.rokPlacanja)return false;
+    return true;
+  }).sort((a,b)=>a.rokPlacanja>b.rokPlacanja?1:-1);
+  if(!upcoming.length){el.innerHTML='';return;}
+  const items=upcoming.slice(0,8).map(s=>{
+    const rok=new Date(s.rokPlacanja);rok.setHours(0,0,0,0);
+    const diff=Math.round((rok-today)/(1000*60*60*24));
+    const rokCls=diff<0?'overdue':diff<=7?'soon':'ok';
+    const rokTxt=diff<0?`Kasni ${Math.abs(diff)} dana!`:diff===0?'Danas!':diff===1?'Sutra':diff<=7?`Za ${diff} dana`:`${fd(s.rokPlacanja)}`;
+    const preostalo=s.statusPlacanja==='delimicno'?Math.max(0,(s.iznos||0)-(s.placenoIznos||0)):s.iznos||0;
+    const valSym=s.valuta==='EUR'?'€':s.valuta==='RSD'?'RSD':'$';
+    const stBadge=s.statusPlacanja==='delimicno'?'b-partial':'b-unpaid';
+    const stTxt=s.statusPlacanja==='delimicno'?'Delimično':'Čeka plaćanje';
+    const st=stavke.find(x=>x.id===s.stavkaId);
+    return`<div class="val-item">
+      <div class="vi-left">
+        <div class="vi-izvr">${esc(s.izvodjac||'—')}${s.brRacuna?` <span style="font-size:9.5px;color:var(--text2);font-weight:400">#${esc(s.brRacuna)}</span>`:''}</div>
+        <div class="vi-meta">${st?esc(st.naziv.slice(0,40)):'—'}${s.lamela&&s.lamela!=='Oba'?` · Lam. ${s.lamela}`:''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="badge ${stBadge}" style="font-size:9px">${stTxt}</span>
+        <div class="vi-right">
+          <div class="vi-iznos">${valSym} ${fmt(Math.round(preostalo))}</div>
+          <div class="vi-rok ${rokCls}">${rokTxt}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  const totalEur=upcoming.filter(s=>!s.valuta||s.valuta==='EUR').reduce((a,s)=>a+(s.statusPlacanja==='delimicno'?Math.max(0,(s.iznos||0)-(s.placenoIznos||0)):s.iznos||0),0);
+  el.innerHTML=`<div class="val-card">
+    <div class="vc-title">⏰ Valute — obaveze na naplatu (${upcoming.length})<span style="margin-left:auto;font-size:11px;font-weight:600;color:var(--danger)">${fmt(Math.round(totalEur))} € ukupno</span></div>
+    ${items}
+    ${upcoming.length>8?`<div style="font-size:11px;color:var(--text2);padding-top:8px;text-align:center">... i još ${upcoming.length-8} valuta</div>`:''}
+  </div>`;
+}
+
 function saveIzv(id){
-  const d={naziv:document.getElementById('m-naziv').value,kontakt:document.getElementById('m-kont').value,telefon:document.getElementById('m-tel').value,email:document.getElementById('m-email').value,napomena:document.getElementById('m-nap').value,ugovorNaziv:window._pd.naziv,ugovorPdf:window._pd.data};
+  const d={
+    naziv:document.getElementById('m-naziv').value,
+    pib:document.getElementById('m-pib')?.value||'',
+    mb:document.getElementById('m-mb')?.value||'',
+    kontakt:document.getElementById('m-kont').value,
+    telefon:document.getElementById('m-tel').value,
+    email:document.getElementById('m-email').value,
+    napomena:document.getElementById('m-nap').value,
+    nadzorniIme:document.getElementById('m-nadzorni-ime')?.value||'',
+    nadzorniTel:document.getElementById('m-nadzorni-tel')?.value||'',
+    nadzorniFirma:document.getElementById('m-nadzorni-firma')?.value||'',
+    ugovorNaziv:window._pd.naziv,
+    ugovorPdf:window._pd.data
+  };
   if(!d.naziv.trim()){alert('Unesite naziv firme.');return;}
   if(id){Object.assign(izv.find(i=>i.id===id),d);}else{d.id=nii++;izv.push(d);}
   sv(IK,izv);cM();rIzv();
@@ -1771,7 +1969,7 @@ function exportKasPDF(){
 }
 
 // ===== RENDER ALL =====
-function rAll(){rHome();rStavke();rSit();rIzv();rGantt();rKasnjenja();rKalk();}
+function rAll(){rHome();rStavke();rSit();rIzv();rGantt();rKasnjenja();rKalk();rValute();}
 
 // ===== EVENTS =====
 document.querySelector('.sidebar').addEventListener('click',e=>{
@@ -1798,6 +1996,7 @@ document.getElementById('btn-pdf').addEventListener('click',exportPDF);
 document.getElementById('btn-nova-stavka').addEventListener('click',()=>oM('stavka'));
 document.getElementById('btn-novi-izv').addEventListener('click',()=>oM('izv'));
 document.getElementById('btn-nova-sit').addEventListener('click',()=>oM('sit'));
+document.getElementById('btn-nova-racun')?.addEventListener('click',()=>oM('racun'));
 ['fs','fk','fst','fp','ftp','fugo'].forEach(id=>{const el=document.getElementById(id);if(el){el.addEventListener('input',rStavke);el.addEventListener('change',rStavke);}});
 ['g-zoom','g-fk','g-fst'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('change',rGantt);});
 document.getElementById('tbl-predmer').addEventListener('click',e=>{
