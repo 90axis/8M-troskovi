@@ -1772,7 +1772,7 @@ function calcAvansPreview(){
   if(!ugo&&!av){el.innerHTML='Unesi ugovorenu cenu i avans za prikaz';return;}
   const pct=ugo>0?Math.round(av/ugo*100):0;
   el.innerHTML=av
-    ?`Avans: <strong>${fmt(av)} €</strong>${ugo?` = <strong>${pct}%</strong> od ugovorene cene (${fmt(ugo)} €)`:''}`
+    ?('Avans: <strong>'+fmt(av)+' €</strong>'+(ugo?(' = <strong>'+pct+'%</strong> od ugovorene cene ('+fmt(ugo)+' €)'):''))
     :`Ugovorena cena: <strong>${fmt(ugo)} €</strong>`;
 }
 
@@ -1992,10 +1992,10 @@ function rUplate(){
       </td>
       <td style="text-align:center"><span class="badge ${lamBadge}">${v.lamStr}</span></td>
       <td style="text-align:right;background:var(--bg2)">
-        ${v.ugo>0?`<strong>${fmt(Math.round(v.ugo))} €</strong>`:`<span style="color:var(--text2);font-size:10px">—</span><br><span style="font-size:9.5px;color:var(--text2)">pred: ${fmt(Math.round(v.pred))} €</span>`}
+        ${v.ugo>0?('<strong>'+fmt(Math.round(v.ugo))+' €</strong>'):('<span style="color:var(--text2);font-size:10px">—</span><br><span style="font-size:9.5px;color:var(--text2)">pred: '+fmt(Math.round(v.pred))+' €</span>')}
       </td>
       <td style="text-align:right;background:#FFF5F0">
-        ${v.avans>0?`<strong>${fmt(Math.round(v.avans))} €</strong>${avansBadge?`<br><span class="badge ${avansBadge}" style="font-size:9px">${avansStatus==='placen'?'Plaćen':'Čeka'}</span>`:'`}`:'<span style="color:var(--text2)">—</span>'}
+        ${v.avans>0?(('<strong>'+fmt(Math.round(v.avans))+' €</strong>')+(avansBadge?('<br><span class="badge '+avansBadge+'" style="font-size:9px">'+(avansStatus==='placen'?'Plaćen':'Čeka')+'</span>'):'')):('<span style="color:var(--text2)">—</span>')}
       </td>
       <td style="text-align:right;background:#FFF8E8;color:var(--warn)">${fmt(Math.round(v.ispost))} €</td>
       <td style="text-align:right;background:var(--fin-pl-light);color:var(--la);font-weight:600">${fmt(Math.round(v.plac))} €</td>
