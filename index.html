@@ -432,7 +432,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
           <table>
             <thead>
               <tr class="hdr-group">
-                <th>#</th><th>Stavka</th><th>Lam.</th><th>Izvođač / Nadzorni</th><th>Iznos BRUTO</th><th>Datum</th><th>Rok plaćanja</th><th>Status</th><th>PDF</th><th>Napomena</th>
+                <th>#</th><th>Vrsta radova</th><th>Lam.</th><th>Izvođač / Nadzorni</th><th>Iznos BRUTO</th><th>Datum</th><th>Rok plaćanja</th><th>Status</th><th style="min-width:85px">% plaćeno</th><th>PDF</th><th>Napomena</th>
               </tr>
             </thead>
             <tbody id="sit-body"></tbody>
@@ -945,19 +945,30 @@ function rSit(){
     const stPl=s.statusPlacanja||'neplaceno';
     const stBadge=stPl==='placeno'?'b-paid':stPl==='delimicno'?'b-partial':'b-unpaid';
     const stTxt=stPl==='placeno'?'Plaćeno':stPl==='delimicno'?'Delimično':'Čeka';
+    // Progress bar
+    const placIzn=stPl==='placeno'?s.iznos:s.placenoIznos||0;
+    const pct=s.iznos>0?Math.min(100,Math.round(placIzn/s.iznos*100)):0;
+    const barCol=pct===100?'var(--lb)':pct>0?'var(--warn)':'var(--border)';
+    const progBar=`<div style="width:80px">
+      <div style="height:6px;background:#eee;border-radius:3px;overflow:hidden;margin-bottom:2px">
+        <div style="height:100%;width:${pct}%;background:${barCol};border-radius:3px;transition:width .3s"></div>
+      </div>
+      <div style="font-size:9.5px;color:${pct===100?'var(--lb)':pct>0?'var(--warn)':'var(--text2)'};text-align:center">${pct}%</div>
+    </div>`;
     return`<tr>
       <td style="color:var(--text2);font-size:10px">#${s.id}${s.brRacuna?`<br><span style="font-size:9px">${esc(s.brRacuna)}</span>`:''}</td>
-      <td title="${st?esc(st.naziv):''}" style="max-width:130px;overflow:hidden;text-overflow:ellipsis">${st?esc(st.naziv):'—'}</td>
+      <td title="${st?esc(st.naziv):''}" style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:normal;font-size:11px;line-height:1.3">${st?esc(st.naziv):'—'}${st?`<br><span style="font-size:9px;color:var(--text2)">${esc(st.kat)}</span>`:''}</td>
       <td><span class="badge ${s.lamela==='A'?'b-la':s.lamela==='B'?'b-lb':'b-lab'}">${s.lamela}</span></td>
       <td style="font-size:11px">${esc(s.izvodjac||'—')}${s.nadzorni?`<br><span style="font-size:9px;color:var(--text2)">👁 ${esc(s.nadzorni)}</span>`:''}</td>
       <td style="text-align:right;font-weight:700;color:var(--la)">${valSym} ${fmt(s.iznos)}</td>
       <td>${fd(s.datum)}</td>
       <td>${rokStr}</td>
       <td><span class="badge ${stBadge}" style="font-size:9px">${stTxt}</span></td>
+      <td>${progBar}</td>
       <td>${pdfCell}</td>
-      <td style="font-size:11px;color:var(--text2);max-width:100px;overflow:hidden;text-overflow:ellipsis">${esc(s.napomena||'')}</td>
+      <td style="font-size:11px;color:var(--text2);max-width:90px;overflow:hidden;text-overflow:ellipsis">${esc(s.napomena||'')}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="10" style="text-align:center;padding:16px;color:var(--text2)">Nema evidentiranih situacija / računa</td></tr>';
+  }).join('') || '<tr><td colspan="11" style="text-align:center;padding:16px;color:var(--text2)">Nema evidentiranih situacija / računa</td></tr>';
 }
 function viewSitPdf(sid){
   const s=sit.find(x=>x.id===sid);if(!s||!s.pdfData)return alert('PDF nije dostupan.');
@@ -1326,17 +1337,57 @@ function getLamData(pfx){
 
 // ===== SIT HELPER FUNCTIONS =====
 function onSitIzvChange(naziv){
+  // Nadzorni organ
   const box=document.getElementById('m-nadzorni-box');
   const inp=document.getElementById('m-nadzorni');
   const hint=document.getElementById('m-nadzorni-hint');
-  if(!naziv||!box){return;}
-  const i=izv.find(x=>x.naziv===naziv);
-  if(i&&(i.nadzorniIme||i.nadzorniFirma)){
-    box.style.display='block';
-    if(inp) inp.value=(i.nadzorniIme||'')+(i.nadzorniFirma?' — '+i.nadzorniFirma:'');
-    if(hint) hint.textContent=i.nadzorniTel?'📞 '+i.nadzorniTel:'';
-  } else {
-    box.style.display='none';
+  if(box){
+    const i=izv.find(x=>x.naziv===naziv);
+    if(i&&(i.nadzorniIme||i.nadzorniFirma)){
+      box.style.display='block';
+      if(inp) inp.value=(i.nadzorniIme||'')+(i.nadzorniFirma?' — '+i.nadzorniFirma:'');
+      if(hint) hint.textContent=i.nadzorniTel?'📞 '+i.nadzorniTel:'';
+    } else {
+      box.style.display='none';
+    }
+  }
+  // Auto-popuni stavku — ugovorene stavke ovog izvođača
+  const stSel=document.getElementById('m-st');
+  if(!stSel||!naziv) return;
+  // Nađi sve stavke gdje je ovaj izvođač ugovoren (lamelaA ili lamelaB)
+  const ugovorene=stavke.filter(s=>
+    s.lamelaA.izvodjac===naziv||s.lamelaB.izvodjac===naziv
+  );
+  // Rebuild select sa ugovorenim stavkama na vrhu, separator, ostale ispod
+  const ostale=stavke.filter(s=>
+    s.lamelaA.izvodjac!==naziv&&s.lamelaB.izvodjac!==naziv
+  );
+  stSel.innerHTML=`<option value="">— odaberi stavku —</option>`
+    +(ugovorene.length
+      ? `<optgroup label="✅ Ugovoreno sa ovim izvođačem">`
+        +ugovorene.map(s=>{
+          const lam=s.lamelaA.izvodjac===naziv&&s.lamelaB.izvodjac===naziv?'A+B':
+                    s.lamelaA.izvodjac===naziv?'A':'B';
+          return`<option value="${s.id}">${s.id}. ${esc(s.naziv)} [${lam}]</option>`;
+        }).join('')
+        +`</optgroup>`
+      : '')
+    +(ostale.length
+      ? `<optgroup label="Ostale stavke">`
+        +ostale.map(s=>`<option value="${s.id}">${s.id}. ${esc(s.naziv)}</option>`).join('')
+        +`</optgroup>`
+      : '');
+  // Auto-select first ugovorena stavka
+  if(ugovorene.length===1){
+    stSel.value=String(ugovorene[0].id);
+    // Auto-select lamela
+    const lamSel=document.getElementById('m-lam');
+    if(lamSel){
+      const s=ugovorene[0];
+      if(s.lamelaA.izvodjac===naziv&&s.lamelaB.izvodjac===naziv) lamSel.value='Oba';
+      else if(s.lamelaA.izvodjac===naziv) lamSel.value='A';
+      else lamSel.value='B';
+    }
   }
 }
 
@@ -1406,7 +1457,10 @@ function rValute(){
     if(!s.rokPlacanja)return false;
     return true;
   }).sort((a,b)=>a.rokPlacanja>b.rokPlacanja?1:-1);
-  if(!upcoming.length){el.innerHTML='';return;}
+  if(!upcoming.length){
+    el.innerHTML=`<div class="val-card"><div class="vc-title">⏰ Valute — obaveze na naplatu<span style="margin-left:auto;font-size:11px;color:var(--lb)">✅ Nema otvorenih valuta</span></div></div>`;
+    return;
+  }
   const items=upcoming.slice(0,8).map(s=>{
     const rok=new Date(s.rokPlacanja);rok.setHours(0,0,0,0);
     const diff=Math.round((rok-today)/(1000*60*60*24));
@@ -1415,28 +1469,149 @@ function rValute(){
     const preostalo=s.statusPlacanja==='delimicno'?Math.max(0,(s.iznos||0)-(s.placenoIznos||0)):s.iznos||0;
     const valSym=s.valuta==='EUR'?'€':s.valuta==='RSD'?'RSD':'$';
     const stBadge=s.statusPlacanja==='delimicno'?'b-partial':'b-unpaid';
-    const stTxt=s.statusPlacanja==='delimicno'?'Delimično':'Čeka plaćanje';
+    const stTxt=s.statusPlacanja==='delimicno'?'Delimično':'Čeka';
+    const pct=s.iznos>0?Math.min(100,Math.round((s.placenoIznos||0)/s.iznos*100)):0;
     const st=stavke.find(x=>x.id===s.stavkaId);
-    return`<div class="val-item">
-      <div class="vi-left">
-        <div class="vi-izvr">${esc(s.izvodjac||'—')}${s.brRacuna?` <span style="font-size:9.5px;color:var(--text2);font-weight:400">#${esc(s.brRacuna)}</span>`:''}</div>
-        <div class="vi-meta">${st?esc(st.naziv.slice(0,40)):'—'}${s.lamela&&s.lamela!=='Oba'?` · Lam. ${s.lamela}`:''}</div>
+    return`<div class="val-item" style="cursor:pointer" onclick="oValutaUplata(${s.id})" title="Klikni za evidenciju uplate">
+      <div class="vi-left" style="flex:1;min-width:0">
+        <div class="vi-izvr">${esc(s.izvodjac||'—')}${s.brRacuna?` <span style="font-size:9px;color:var(--text2);font-weight:400">#${esc(s.brRacuna)}</span>`:''}</div>
+        <div class="vi-meta">${st?esc(st.naziv.slice(0,38)):'—'}${s.lamela&&s.lamela!=='Oba'?` · Lam. ${s.lamela}`:''}</div>
+        ${pct>0&&pct<100?`<div style="margin-top:4px;width:120px"><div style="height:4px;background:#eee;border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--warn);border-radius:2px"></div></div><div style="font-size:9px;color:var(--text2)">${pct}% plaćeno</div></div>`:''}
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
         <span class="badge ${stBadge}" style="font-size:9px">${stTxt}</span>
         <div class="vi-right">
           <div class="vi-iznos">${valSym} ${fmt(Math.round(preostalo))}</div>
           <div class="vi-rok ${rokCls}">${rokTxt}</div>
         </div>
+        <div style="font-size:16px;color:var(--la);opacity:.5">💳</div>
       </div>
     </div>`;
   }).join('');
   const totalEur=upcoming.filter(s=>!s.valuta||s.valuta==='EUR').reduce((a,s)=>a+(s.statusPlacanja==='delimicno'?Math.max(0,(s.iznos||0)-(s.placenoIznos||0)):s.iznos||0),0);
   el.innerHTML=`<div class="val-card">
-    <div class="vc-title">⏰ Valute — obaveze na naplatu (${upcoming.length})<span style="margin-left:auto;font-size:11px;font-weight:600;color:var(--danger)">${fmt(Math.round(totalEur))} € ukupno</span></div>
+    <div class="vc-title">⏰ Valute — obaveze na naplatu (${upcoming.length})
+      <span style="margin-left:auto;font-size:11px;font-weight:600;color:var(--danger)">${fmt(Math.round(totalEur))} € ukupno</span>
+    </div>
     ${items}
-    ${upcoming.length>8?`<div style="font-size:11px;color:var(--text2);padding-top:8px;text-align:center">... i još ${upcoming.length-8} valuta</div>`:''}
+    ${upcoming.length>8?`<div style="font-size:11px;color:var(--text2);padding-top:8px;text-align:center;border-top:1px solid var(--border)">... i još ${upcoming.length-8} otvorenih valuta</div>`:''}
   </div>`;
+}
+
+// ===== MODAL: EVIDENCIJA UPLATE =====
+function oValutaUplata(sid){
+  const s=sit.find(x=>x.id===sid);if(!s)return;
+  const ow=document.getElementById('mwrap'),mc=document.getElementById('mcont');
+  const st=stavke.find(x=>x.id===s.stavkaId);
+  const valSym=s.valuta==='EUR'?'€':s.valuta==='RSD'?'RSD':'$';
+  const vec=s.placenoIznos||0;
+  const preostalo=Math.max(0,s.iznos-vec);
+  const today=new Date().toISOString().slice(0,10);
+  const stPl=s.statusPlacanja||'neplaceno';
+  const pct=s.iznos>0?Math.min(100,Math.round(vec/s.iznos*100)):0;
+
+  mc.innerHTML=`
+    <div style="background:linear-gradient(135deg,var(--la),var(--la-mid));color:#fff;margin:-20px -20px 16px;padding:18px 20px;border-radius:10px 10px 0 0">
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px">💳 Evidencija uplate</div>
+      <div style="font-size:11px;opacity:.85">${esc(s.izvodjac||'—')}${s.brRacuna?' · #'+esc(s.brRacuna):''} · ${st?esc(st.naziv.slice(0,40)):'—'}</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div class="izv-stat-item"><div class="sv" style="color:var(--la)">${valSym} ${fmt(s.iznos)}</div><div class="sl">Ukupan iznos</div></div>
+      <div class="izv-stat-item"><div class="sv" style="color:var(--lb)">${valSym} ${fmt(vec)}</div><div class="sl">Već plaćeno</div></div>
+      <div class="izv-stat-item"><div class="sv" style="color:${preostalo>0?'var(--fin-pr)':'var(--lb)'}">${valSym} ${fmt(preostalo)}</div><div class="sl">Preostalo</div></div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden;margin-bottom:4px">
+        <div style="height:100%;width:${pct}%;background:${pct===100?'var(--lb)':pct>0?'var(--warn)':'var(--border)'};border-radius:4px;transition:width .4s"></div>
+      </div>
+      <div style="font-size:10px;color:var(--text2);text-align:right">${pct}% plaćeno</div>
+    </div>
+
+    <div class="divl"></div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Nova uplata</div>
+
+    <div class="fr">
+      <div class="fg"><label>Iznos uplate (${valSym})</label>
+        <input id="up-iznos" type="number" min="0" max="${preostalo}" step="0.01" value="${preostalo}" placeholder="0.00" oninput="calcUplataPreview()">
+      </div>
+      <div class="fg"><label>Datum uplate</label>
+        <input id="up-dat" type="date" value="${today}">
+      </div>
+    </div>
+    <div class="fg"><label>Napomena uz uplatu (opciono)</label>
+      <input id="up-nap" placeholder="npr. virman, ček, gotovina...">
+    </div>
+
+    <div id="up-preview" class="pdv-info" style="margin-top:4px"></div>
+
+    <div style="margin-top:12px;padding:10px 12px;background:var(--bg2);border-radius:7px;font-size:11px;color:var(--text2)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>Rok plaćanja:</span><strong>${s.rokPlacanja?fd(s.rokPlacanja):'nije definisan'}</strong></div>
+      <div style="display:flex;justify-content:space-between"><span>Trenutni status:</span>
+        <span class="badge ${stPl==='placeno'?'b-paid':stPl==='delimicno'?'b-partial':'b-unpaid'}" style="font-size:9px">${stPl==='placeno'?'Plaćeno':stPl==='delimicno'?'Delimično':'Čeka plaćanje'}</span>
+      </div>
+    </div>
+
+    <div class="mf mf-left">
+      <button class="btn btn-del" onclick="markUplata(${sid},'otpis')" title="Otpiši — označi kao plaćeno bez evidencije iznosa">✓ Označi kao plaćeno</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-s" onclick="cM()">Otkaži</button>
+        <button class="btn btn-p" onclick="saveUplata(${sid})" style="background:var(--lb)">💾 Evidentiraj uplatu</button>
+      </div>
+    </div>
+  `;
+  ow.classList.add('open');
+  setTimeout(calcUplataPreview,50);
+}
+
+function calcUplataPreview(){
+  const iznos=parseFloat(document.getElementById('up-iznos')?.value)||0;
+  const el=document.getElementById('up-preview');
+  if(!el)return;
+  if(!iznos){el.innerHTML='Unesi iznos uplate';return;}
+  el.innerHTML=`Uplaćuje se: <strong>${fmt(iznos)} €</strong>`;
+}
+
+function saveUplata(sid){
+  const s=sit.find(x=>x.id===sid);if(!s)return;
+  const iznos=parseFloat(document.getElementById('up-iznos')?.value)||0;
+  const dat=document.getElementById('up-dat')?.value||'';
+  const nap=document.getElementById('up-nap')?.value||'';
+  if(!iznos){alert('Unesi iznos uplate.');return;}
+  // Dodaj na plaćeno
+  s.placenoIznos=(s.placenoIznos||0)+iznos;
+  // Dodaj entry u istoriju uplata
+  if(!s.uplate) s.uplate=[];
+  s.uplate.push({iznos,datum:dat,napomena:nap});
+  // Ažuriraj status
+  if(s.placenoIznos>=s.iznos*0.999){
+    s.statusPlacanja='placeno';
+    s.placenoIznos=s.iznos;
+  } else if(s.placenoIznos>0){
+    s.statusPlacanja='delimicno';
+  }
+  // Ažuriraj placenoB na stavci
+  const stav=stavke.find(x=>x.id===s.stavkaId);
+  if(stav){
+    const lamVal=s.lamela||'Oba';
+    if(lamVal==='A'||lamVal==='Oba') stav.lamelaA.placenoB=(stav.lamelaA.placenoB||0)+(lamVal==='Oba'?iznos/2:iznos);
+    if(lamVal==='B'||lamVal==='Oba') stav.lamelaB.placenoB=(stav.lamelaB.placenoB||0)+(lamVal==='Oba'?iznos/2:iznos);
+  }
+  sv(SITK,sit);sv(SK,stavke);
+  cM();rAll();
+}
+
+function markUplata(sid, tip){
+  const s=sit.find(x=>x.id===sid);if(!s)return;
+  if(tip==='otpis'){
+    s.statusPlacanja='placeno';
+    s.placenoIznos=s.iznos;
+    if(!s.uplate)s.uplate=[];
+    s.uplate.push({iznos:s.iznos,datum:new Date().toISOString().slice(0,10),napomena:'Označeno kao plaćeno'});
+  }
+  sv(SITK,sit);cM();rAll();
 }
 
 function saveIzv(id){
