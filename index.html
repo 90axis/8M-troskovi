@@ -39,7 +39,59 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .app{display:flex;height:100vh;overflow:hidden}
 
 /* SIDEBAR */
-.sidebar{width:210px;flex-shrink:0;background:#1E3A5F;border-right:1px solid #152D4A;display:flex;flex-direction:column}
+.sidebar{width:210px;flex-shrink:0;background:#1E3A5F;border-right:1px solid #152D4A;display:flex;flex-direction:column;transition:transform .25s ease;z-index:50}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:49}
+
+/* Mobile hamburger */
+.ham{display:none;align-items:center;justify-content:center;width:36px;height:36px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);cursor:pointer;font-size:18px;flex-shrink:0}
+
+@media(max-width:768px){
+  .app{flex-direction:column;height:100vh;height:100dvh}
+  .sidebar{position:fixed;top:0;left:0;height:100%;transform:translateX(-100%);width:240px}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-overlay.open{display:block}
+  .ham{display:flex}
+  .main{flex:1;overflow:hidden;display:flex;flex-direction:column;min-width:0;width:100%}
+  .topbar{padding:6px 10px;gap:5px;flex-wrap:nowrap;overflow-x:auto}
+  .topbar h1{font-size:13px;min-width:60px}
+  .tb-btn{height:26px;padding:0 8px;font-size:11px}
+  .content{padding:10px 10px}
+  .metrics{grid-template-columns:repeat(2,1fr);gap:6px}
+  .mc .val{font-size:15px}
+  .cg{grid-template-columns:1fr}
+  #tbl-predmer{font-size:10px}
+  #tbl-predmer td,#tbl-predmer th{padding:4px 5px}
+  .tf{gap:4px;padding:6px 8px}
+  .tf input,.tf select{height:26px;font-size:11px}
+  #izv-grid{grid-template-columns:1fr!important}
+  .modal{width:calc(100vw - 24px);max-width:100%;margin:12px;padding:14px}
+  .fr,.fr3{grid-template-columns:1fr}
+  /* Kalkulator stacks */
+  #page-kalkulator > div:first-child{grid-template-columns:1fr!important}
+}
+
+/* Tfoot suma row */
+tfoot tr.sum-row td{padding:6px 7px;font-weight:700;font-size:11.5px;background:#E8E5DE;border-top:2px solid #bbb}
+tfoot tr.sum-row td.sum-a{background:var(--la-light);color:var(--la)}
+tfoot tr.sum-row td.sum-b{background:var(--lb-light);color:var(--lb)}
+tfoot tr.sum-row td.sum-pdv{background:var(--fin-pdv-light);color:var(--fin-pdv)}
+tfoot tr.sum-row td.sum-pay{background:var(--fin-pl-light);color:var(--fin-pl)}
+tfoot tr.sum-row td.sum-pr{background:var(--fin-pr-light);color:var(--fin-pr)}
+
+/* Izvođač detalji modal */
+.izv-detail-header{background:linear-gradient(135deg,var(--la) 0%,var(--la-mid) 100%);color:#fff;margin:-20px -20px 16px;padding:20px;border-radius:10px 10px 0 0}
+.izv-detail-header.hdr-b{background:linear-gradient(135deg,var(--lb) 0%,var(--lb-mid) 100%)}
+.izv-detail-header.hdr-ab{background:linear-gradient(135deg,var(--lab) 0%,#26A69A 100%)}
+.izv-stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.izv-stat-item{background:#fafaf8;border:1px solid var(--border);border-radius:7px;padding:10px 12px;text-align:center}
+.izv-stat-item .sv{font-size:16px;font-weight:700;margin-bottom:2px}
+.izv-stat-item .sl{font-size:10px;color:var(--text2)}
+.sit-timeline{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;padding:2px}
+.sit-tl-item{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:#fafaf8}
+.sit-tl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.sit-tl-info{flex:1;min-width:0}
+.sit-tl-title{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sit-tl-meta{font-size:10.5px;color:var(--text2);margin-top:2px}
 .slogo{padding:14px;border-bottom:1px solid rgba(255,255,255,.1)}
 .slogo img{width:100%;max-width:170px;height:auto;display:block;border-radius:4px}
 .slogo .proj{font-size:11px;color:rgba(255,255,255,.55);margin-top:7px;padding-top:7px;border-top:1px solid rgba(255,255,255,.1)}
@@ -243,8 +295,9 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
 </style>
 </head>
 <body>
+<div class="sidebar-overlay" id="sov" onclick="closeSidebar()"></div>
 <div class="app" id="app">
-<div class="sidebar">
+<div class="sidebar" id="sidebar">
   <div class="slogo">
     <img id="logo-img" alt="Dacić Prom">
     <div class="proj">Projekat: <span>8. Mart</span></div>
@@ -262,6 +315,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
 </div>
 <div class="main">
   <div class="topbar">
+    <div class="ham" id="ham-btn" onclick="openSidebar()">☰</div>
     <h1 id="ptitle">Home</h1>
     <div style="display:flex;gap:3px">
       <button class="tb-btn active" data-l="sve">Sve</button>
@@ -322,6 +376,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
               </tr>
             </thead>
             <tbody id="st-body"></tbody>
+            <tfoot id="st-foot"></tfoot>
           </table>
         </div>
       </div>
@@ -819,6 +874,30 @@ function rStavke(){
     });
   });
 
+  // ===== SUMA RED =====
+  const foot=document.getElementById('st-foot');
+  if(foot){
+    const sumPredN=fil.reduce((a,s)=>a+(s.predvidjena||0),0);
+    const sumPredB=sumPredN;
+    const sumUgoN=fil.reduce((a,s)=>a+getUgoN(s),0);
+    const sumUgoB=fil.reduce((a,s)=>a+getUgoB(s),0);
+    const sumPDV=fil.reduce((a,s)=>a+getPDV(s),0);
+    const sumPl=fil.reduce((a,s)=>a+getPl(s),0);
+    const sumPr=fil.reduce((a,s)=>a+Math.max(0,getUgoB(s)-getPl(s)),0);
+    const lamTdF=lam==='A'?'sum-a':lam==='B'?'sum-b':'sum-a';
+    foot.innerHTML=`<tr class="sum-row">
+      <td colspan="6" style="text-align:right;font-size:11px;letter-spacing:.03em">UKUPNO (${fil.length} stavki)</td>
+      <td class="sum-pred" style="text-align:right;background:var(--fin-pred-light)">${fmt(Math.round(sumPredN))}</td>
+      <td class="sum-pred" style="text-align:right;background:var(--fin-pred-light)">${fmt(Math.round(sumPredB))}</td>
+      <td class="${lamTdF}" style="text-align:right">${fmt(Math.round(sumUgoN))}</td>
+      <td class="${lamTdF}" style="text-align:right">${fmt(Math.round(sumUgoB))}</td>
+      <td class="sum-pdv" style="text-align:right">${sumPDV?fmt(Math.round(sumPDV)):'—'}</td>
+      <td class="sum-pay" style="text-align:right">${fmt(Math.round(sumPl))}</td>
+      <td class="sum-pr" style="text-align:right">${fmt(Math.round(sumPr))}</td>
+      <td colspan="3"></td>
+    </tr>`;
+  }
+
   // Sort indicators
   document.querySelectorAll('#tbl-predmer th[data-col]').forEach(th=>{
     th.classList.remove('sort-asc','sort-desc');
@@ -884,23 +963,33 @@ function rIzv(){
       :hasA?`<span class="badge b-act" style="font-size:9px">A</span>`
       :hasB?`<span class="badge b-mid" style="font-size:9px">B</span>`:'';
     const cardBorderCls=hasA&&hasB?'izv-card-ab':hasA?'izv-card-a':'izv-card-b';
+    const ugoVrednost=engaged.reduce((a,s)=>{
+      let v=0;
+      if(s.lamelaA.izvodjac===i.naziv) v+=s.lamelaA.ugovorenaUnos?calcBruto(s.lamelaA.ugovorenaUnos,s.lamelaA.tipCene):(s.predvidjena/2||0);
+      if(s.lamelaB.izvodjac===i.naziv) v+=s.lamelaB.ugovorenaUnos?calcBruto(s.lamelaB.ugovorenaUnos,s.lamelaB.tipCene):(s.predvidjena/2||0);
+      return a+v;
+    },0);
     return`<div style="background:#fff;border:1px solid #ccc9c2;border-radius:8px;padding:13px" class="${cardBorderCls}">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
-        <div style="width:36px;height:36px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#185FA5;flex-shrink:0">${i.naziv.slice(0,2).toUpperCase()}</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:${hasA&&hasB?'var(--lab-light)':hasA?'var(--la-light)':'var(--lb-light)'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${hasA&&hasB?'var(--lab)':hasA?'var(--la)':'var(--lb)'};flex-shrink:0">${i.naziv.slice(0,2).toUpperCase()}</div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.naziv)}</div>
           <div style="margin-top:2px">${lamBadge}</div>
         </div>
       </div>
-      ${i.kontakt?`<div style="font-size:11px;color:#5f5e5a;margin-bottom:3px">👤 ${esc(i.kontakt)}</div>`:''}
-      ${i.telefon?`<div style="font-size:11px;color:#5f5e5a;margin-bottom:3px">📞 ${esc(i.telefon)}</div>`:''}
-      ${i.email?`<div style="font-size:11px;color:#5f5e5a;margin-bottom:3px">✉ ${esc(i.email)}</div>`:''}
-      ${engaged.length?`<div style="font-size:10.5px;color:#5f5e5a;margin-top:6px;padding-top:6px;border-top:1px solid #ebe8e1">${engaged.length} stavki | Plaćeno: <strong style="color:#185FA5">${fmt(totalPl)} €</strong></div>`:''}
-      ${i.napomena?`<div style="font-size:11px;color:#888;margin-top:4px">${esc(i.napomena)}</div>`:''}
+      ${i.kontakt?`<div style="font-size:11px;color:var(--text2);margin-bottom:3px">👤 ${esc(i.kontakt)}</div>`:''}
+      ${i.telefon?`<div style="font-size:11px;color:var(--text2);margin-bottom:3px">📞 ${esc(i.telefon)}</div>`:''}
+      ${i.email?`<div style="font-size:11px;color:var(--text2);margin-bottom:3px">✉ ${esc(i.email)}</div>`:''}
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10.5px">
+        <div><span style="color:var(--text2)">Ugovoreno</span><br><strong style="color:var(--la)">${fmt(Math.round(ugoVrednost))} €</strong></div>
+        <div><span style="color:var(--text2)">Plaćeno</span><br><strong style="color:var(--lb)">${fmt(totalPl)} €</strong></div>
+      </div>
+      ${i.napomena?`<div style="font-size:11px;color:#888;margin-top:7px">${esc(i.napomena)}</div>`:''}
       ${i.ugovorNaziv?`<div class="pdf-badge" style="margin-top:5px">📄 ${esc(i.ugovorNaziv)}</div>`:''}
       <div style="display:flex;gap:5px;margin-top:9px">
-        <button class="btn btn-s" style="font-size:11px;padding:3px 8px;flex:1" onclick="oM('izv',${i.id})">Uredi</button>
-        <button class="btn btn-del" onclick="delIzv(${i.id})">Obriši</button>
+        <button class="btn btn-p" style="font-size:11px;padding:3px 8px;flex:1" onclick="oIzvDetail(${i.id})">📋 Detalji</button>
+        <button class="btn btn-s" style="font-size:11px;padding:3px 8px" onclick="oM('izv',${i.id})">Uredi</button>
+        <button class="btn btn-del" onclick="delIzv(${i.id})">🗑</button>
       </div>
     </div>`;
   }).filter(Boolean).join('');
@@ -1326,6 +1415,168 @@ function gDragStart(e,el){
   document.addEventListener('mouseup',onUp);
 }
 
+// ===== MOBILE SIDEBAR =====
+function openSidebar(){
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sov').classList.add('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sov').classList.remove('open');
+}
+let _swX=null;
+document.addEventListener('touchstart',e=>{_swX=e.touches[0].clientX;},{passive:true});
+document.addEventListener('touchend',e=>{
+  if(_swX===null)return;
+  const dx=e.changedTouches[0].clientX-_swX;
+  if(_swX<25&&dx>60) openSidebar();
+  else if(dx<-60) closeSidebar();
+  _swX=null;
+},{passive:true});
+
+// ===== IZVOĐAČ DETALJI =====
+function oIzvDetail(iid){
+  const i=izv.find(x=>x.id===iid);if(!i)return;
+  const ow=document.getElementById('mwrap'),mc=document.getElementById('mcont');
+  const engagedA=stavke.filter(s=>s.lamelaA.izvodjac===i.naziv);
+  const engagedB=stavke.filter(s=>s.lamelaB.izvodjac===i.naziv);
+  const hasA=engagedA.length>0,hasB=engagedB.length>0;
+  const hdrCls=hasA&&hasB?'hdr-ab':hasA?'':'hdr-b';
+  const ugoA=engagedA.reduce((a,s)=>a+(s.lamelaA.ugovorenaUnos?calcBruto(s.lamelaA.ugovorenaUnos,s.lamelaA.tipCene):(s.predvidjena/2||0)),0);
+  const ugoB=engagedB.reduce((a,s)=>a+(s.lamelaB.ugovorenaUnos?calcBruto(s.lamelaB.ugovorenaUnos,s.lamelaB.tipCene):(s.predvidjena/2||0)),0);
+  const ugoTot=ugoA+ugoB;
+  const sitI=sit.filter(s=>s.izvodjac===i.naziv);
+  const sitA=sitI.filter(s=>s.lamela==='A'||s.lamela==='Oba');
+  const sitB=sitI.filter(s=>s.lamela==='B'||s.lamela==='Oba');
+  const isplA=sitA.reduce((a,s)=>a+(s.iznos||0),0);
+  const isplB=sitB.reduce((a,s)=>a+(s.iznos||0),0);
+  const isplTot=sitI.reduce((a,s)=>a+(s.iznos||0),0);
+  const preosA=Math.max(0,ugoA-isplA),preosB=Math.max(0,ugoB-isplB),preosTot=Math.max(0,ugoTot-isplTot);
+  const allEngaged=[...new Map([...engagedA,...engagedB].map(s=>[s.id,s])).values()];
+  const stavkeRows=allEngaged.map(s=>{
+    const isA=s.lamelaA.izvodjac===i.naziv,isB=s.lamelaB.izvodjac===i.naziv;
+    const lamStr=isA&&isB?'A+B':isA?'A':'B';
+    const ugo=isA?s.lamelaA.ugovorenaUnos?calcBruto(s.lamelaA.ugovorenaUnos,s.lamelaA.tipCene):(s.predvidjena/2||0):s.lamelaB.ugovorenaUnos?calcBruto(s.lamelaB.ugovorenaUnos,s.lamelaB.tipCene):(s.predvidjena/2||0);
+    const st=isA?s.lamelaA.status:s.lamelaB.status;
+    return`<tr style="font-size:11px"><td>${s.id}</td><td style="font-weight:500">${esc(s.naziv)}</td>
+      <td><span class="badge ${lamStr==='A+B'?'b-lab':lamStr==='A'?'b-la':'b-lb'}">${lamStr}</span></td>
+      <td style="text-align:right">${fmt(Math.round(ugo))} €</td>
+      <td><span class="badge ${st==='Završeno'?'b-done':st==='U toku'?'b-act':'b-todo'}">${st}</span></td></tr>`;
+  }).join('');
+  const sitRows=sitI.slice().sort((a,b)=>a.datum>b.datum?1:-1).map(s=>{
+    const st=stavke.find(x=>x.id===s.stavkaId);
+    return`<div class="sit-tl-item">
+      <div class="sit-tl-dot" style="background:${s.lamela==='A'?'var(--la)':s.lamela==='B'?'var(--lb)':'var(--lab)'}"></div>
+      <div class="sit-tl-info">
+        <div class="sit-tl-title">${st?esc(st.naziv):'Stavka #'+s.stavkaId}</div>
+        <div class="sit-tl-meta">${fd(s.datum)} · Lamela ${s.lamela} · <strong style="color:var(--la)">${fmt(s.iznos)} €</strong>${s.napomena?' · '+esc(s.napomena):''}</div>
+      </div>
+      ${s.pdfNaziv?`<span class="sit-pdf-link" style="font-size:10px;flex-shrink:0" onclick="viewSitPdf(${s.id})">📄</span>`:''}
+    </div>`;
+  }).join('')||'<div style="padding:10px;color:var(--text2);font-size:12px;text-align:center">Nema evidentiranih situacija / računa</div>';
+
+  mc.innerHTML=`
+    <div class="izv-detail-header ${hdrCls}">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0">${i.naziv.slice(0,2).toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:16px;font-weight:700">${esc(i.naziv)}</div>
+          <div style="font-size:11px;opacity:.8;margin-top:2px">${[i.kontakt,i.telefon,i.email].filter(Boolean).join(' · ')}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);font-size:11px;padding:4px 10px" onclick="printIzvDetail(${iid})">🖨 PDF</button>
+          <button class="btn" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);font-size:11px;padding:4px 10px" onclick="cM();setTimeout(()=>oM('izv',${iid}),50)">✏ Uredi</button>
+        </div>
+      </div>
+    </div>
+    <div class="izv-stat">
+      <div class="izv-stat-item"><div class="sv" style="color:var(--la)">${fmt(Math.round(ugoTot))} €</div><div class="sl">Ugovorena vrednost</div></div>
+      <div class="izv-stat-item"><div class="sv" style="color:var(--lb)">${fmt(Math.round(isplTot))} €</div><div class="sl">Isplaćeno (${sitI.length} sit.)</div></div>
+      <div class="izv-stat-item"><div class="sv" style="color:var(--fin-pr)">${fmt(Math.round(preosTot))} €</div><div class="sl">Preostalo za isplatu</div></div>
+    </div>
+    ${hasA&&hasB?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="background:var(--la-light);border:1px solid var(--la-border);border-radius:7px;padding:10px 12px">
+        <div style="font-size:10px;font-weight:700;color:var(--la);margin-bottom:6px;text-transform:uppercase">Lamela A</div>
+        <div style="font-size:11.5px;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Ugovoreno</span><strong>${fmt(Math.round(ugoA))} €</strong></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Isplaćeno (${sitA.length})</span><strong style="color:var(--lb)">${fmt(Math.round(isplA))} €</strong></div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid var(--la-border);padding-top:4px"><span style="color:var(--text2)">Preostalo</span><strong style="color:var(--fin-pr)">${fmt(Math.round(preosA))} €</strong></div>
+        </div>
+      </div>
+      <div style="background:var(--lb-light);border:1px solid var(--lb-border);border-radius:7px;padding:10px 12px">
+        <div style="font-size:10px;font-weight:700;color:var(--lb);margin-bottom:6px;text-transform:uppercase">Lamela B</div>
+        <div style="font-size:11.5px;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Ugovoreno</span><strong>${fmt(Math.round(ugoB))} €</strong></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Isplaćeno (${sitB.length})</span><strong style="color:var(--lb)">${fmt(Math.round(isplB))} €</strong></div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid var(--lb-border);padding-top:4px"><span style="color:var(--text2)">Preostalo</span><strong style="color:var(--fin-pr)">${fmt(Math.round(preosB))} €</strong></div>
+        </div>
+      </div>
+    </div>`:``}
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">Stavke iz predmera (${allEngaged.length})</div>
+    <div style="overflow-x:auto;margin-bottom:14px"><table style="width:100%;font-size:11px;border-collapse:collapse">
+      <thead><tr style="background:var(--bg2)">
+        <th style="padding:4px 7px;text-align:left;font-size:10px">R.br.</th>
+        <th style="padding:4px 7px;text-align:left;font-size:10px;min-width:120px">Opis radova</th>
+        <th style="padding:4px 7px;font-size:10px">Lam.</th>
+        <th style="padding:4px 7px;text-align:right;font-size:10px">Ugovoreno</th>
+        <th style="padding:4px 7px;font-size:10px">Status</th>
+      </tr></thead>
+      <tbody>${stavkeRows}</tbody>
+    </table></div>
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">Situacije / računi (${sitI.length})</div>
+    <div class="sit-timeline">${sitRows}</div>
+    ${i.napomena?`<div style="margin-top:10px;font-size:11px;color:var(--text2);padding:8px 10px;background:var(--bg2);border-radius:6px">📝 ${esc(i.napomena)}</div>`:''}
+    ${i.ugovorNaziv?`<div style="margin-top:8px"><div class="pdf-badge">📄 ${esc(i.ugovorNaziv)}</div></div>`:''}
+    <div class="mf"><button class="btn btn-s" onclick="cM()">Zatvori</button></div>
+  `;
+  ow.classList.add('open');
+}
+
+function printIzvDetail(iid){
+  const i=izv.find(x=>x.id===iid);if(!i)return;
+  const engagedA=stavke.filter(s=>s.lamelaA.izvodjac===i.naziv);
+  const engagedB=stavke.filter(s=>s.lamelaB.izvodjac===i.naziv);
+  const ugoA=engagedA.reduce((a,s)=>a+(s.lamelaA.ugovorenaUnos?calcBruto(s.lamelaA.ugovorenaUnos,s.lamelaA.tipCene):(s.predvidjena/2||0)),0);
+  const ugoB=engagedB.reduce((a,s)=>a+(s.lamelaB.ugovorenaUnos?calcBruto(s.lamelaB.ugovorenaUnos,s.lamelaB.tipCene):(s.predvidjena/2||0)),0);
+  const ugoTot=ugoA+ugoB;
+  const sitI=sit.filter(s=>s.izvodjac===i.naziv).sort((a,b)=>a.datum>b.datum?1:-1);
+  const isplTot=sitI.reduce((a,s)=>a+(s.iznos||0),0);
+  const preosTot=Math.max(0,ugoTot-isplTot);
+  const dd=new Date(),ds=dd.getDate()+'.'+(dd.getMonth()+1)+'.'+dd.getFullYear();
+  const allEngaged=[...new Map([...engagedA,...engagedB].map(s=>[s.id,s])).values()];
+  const stavkeH=allEngaged.map(s=>{
+    const isA=s.lamelaA.izvodjac===i.naziv,isB=s.lamelaB.izvodjac===i.naziv;
+    const ugo=isA?s.lamelaA.ugovorenaUnos?calcBruto(s.lamelaA.ugovorenaUnos,s.lamelaA.tipCene):(s.predvidjena/2||0):s.lamelaB.ugovorenaUnos?calcBruto(s.lamelaB.ugovorenaUnos,s.lamelaB.tipCene):(s.predvidjena/2||0);
+    return`<tr><td>${s.id}</td><td>${s.naziv}</td><td>${isA&&isB?'A+B':isA?'A':'B'}</td><td style="text-align:right;font-weight:bold">${fmt(Math.round(ugo))} €</td><td>${isA?s.lamelaA.status:s.lamelaB.status}</td></tr>`;
+  }).join('');
+  const sitH=sitI.map(s=>{const st=stavke.find(x=>x.id===s.stavkaId);return`<tr><td>${fd(s.datum)}</td><td>${st?st.naziv:'—'}</td><td>${s.lamela}</td><td style="text-align:right;font-weight:bold;color:#1558A0">${fmt(s.iznos)} €</td><td>${esc(s.napomena||'')}</td></tr>`;}).join('')||'<tr><td colspan="5" style="text-align:center;color:#666;padding:8px">Nema evidentiranih situacija</td></tr>';
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${i.naziv} — Izveštaj</title>
+  <style>body{font-family:Arial,sans-serif;font-size:9.5px;padding:18px;color:#111}
+  h1{font-size:14px;color:#1558A0;margin:0 0 3px}h2{font-size:10px;color:#1558A0;margin:12px 0 4px;border-bottom:1px solid #AECBF0;padding-bottom:2px}
+  .sub{font-size:8.5px;color:#666;margin-bottom:14px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+  .stat{background:#E8F1FC;border-radius:5px;padding:9px 10px;text-align:center}.stat .v{font-size:14px;font-weight:700;color:#1558A0}.stat .l{font-size:8px;color:#666;margin-top:2px}
+  table{width:100%;border-collapse:collapse;margin-bottom:8px}th{background:#E8F1FC;color:#1558A0;padding:3px 5px;text-align:left;font-size:8px;border:0.5px solid #AECBF0}
+  td{padding:2px 5px;border:0.5px solid #eee;font-size:8.5px}tr:nth-child(even)td{background:#fafafa}
+  .sum{text-align:right;margin-top:10px;font-size:11px;font-weight:700;padding-top:8px;border-top:2px solid #1558A0}</style>
+  </head><body>
+  <h1>Izvođač radova: ${i.naziv}</h1>
+  <div class="sub">8. Mart, Dacić Prom d.o.o. | Novi Pazar | Datum: ${ds}${[i.kontakt,i.telefon,i.email].filter(Boolean).length?' | '+[i.kontakt,i.telefon,i.email].filter(Boolean).join(' · '):''}</div>
+  <div class="stats">
+    <div class="stat"><div class="v">${fmt(Math.round(ugoTot))} €</div><div class="l">Ugovorena vrednost</div></div>
+    <div class="stat"><div class="v">${fmt(Math.round(isplTot))} €</div><div class="l">Isplaćeno (${sitI.length} situacija)</div></div>
+    <div class="stat"><div class="v" style="color:${preosTot>0?'#C62828':'#2E7D32'}">${fmt(Math.round(preosTot))} €</div><div class="l">Preostalo za isplatu</div></div>
+  </div>
+  <h2>Stavke iz predmera</h2>
+  <table><thead><tr><th>#</th><th>Opis radova/materijala</th><th>Lam.</th><th>Ugovorena vrednost</th><th>Status</th></tr></thead><tbody>${stavkeH}</tbody></table>
+  <h2>Privremene situacije i računi (hronološki)</h2>
+  <table><thead><tr><th>Datum</th><th>Stavka</th><th>Lamela</th><th>Iznos BRUTO</th><th>Napomena</th></tr></thead><tbody>${sitH}</tbody></table>
+  <div class="sum">UKUPNO ISPLAĆENO: ${fmt(Math.round(isplTot))} € &nbsp;·&nbsp; PREOSTALO: <span style="color:${preosTot>0?'#C62828':'#2E7D32'}">${fmt(Math.round(preosTot))} €</span></div>
+  </body></html>`;
+  const w=window.open('','_blank','width=960,height=760');
+  if(w){w.document.write(html);w.document.close();setTimeout(()=>{w.focus();w.print();},500);}
+  else alert('Dozvoli pop-up prozore za PDF/štampu.');
+}
+
 // ===== FILTER IZVOĐAČ U PREDMERU =====
 let fiLam='sve';
 function setFiLam(val, btn){
@@ -1524,7 +1775,8 @@ function rAll(){rHome();rStavke();rSit();rIzv();rGantt();rKasnjenja();rKalk();}
 
 // ===== EVENTS =====
 document.querySelector('.sidebar').addEventListener('click',e=>{
-  const ni=e.target.closest('.ni[data-page]');if(ni)nav(ni.dataset.page);
+  const ni=e.target.closest('.ni[data-page]');
+  if(ni){nav(ni.dataset.page);closeSidebar();}
 });
 document.querySelectorAll('.tb-btn[data-l]').forEach(b=>b.addEventListener('click',function(){
   document.querySelectorAll('.tb-btn[data-l]').forEach(x=>x.classList.remove('active'));
