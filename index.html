@@ -644,7 +644,7 @@ function mkLam(){return{ugovorenaUnos:null,tipCene:'',neto:0,bruto:0,pdv:0,izvod
 // ===== DEFAULT DATA =====
 const DS=[
 {id:1,naziv:'IZVODJENJE GRUBIH GRAĐ. RADOVA',kat:'Grubi građevinski radovi',jedMere:'m²',kolicina:23900,jedCena:52,ugovoreno:'Ugovoreno',predvidjena:1450000,napomena:'',lamelaA:{izvodjac:'GP Elmir',ugovorenaUnos:1300000.0,tipCene:'BRUTO',neto:0,bruto:0,pdv:0,placenoB:250000,status:'U toku',prioritet:'Visok',posto:50,pocetak:'',zavrsetak:''},lamelaB:{izvodjac:'',ugovorenaUnos:null,tipCene:'',neto:0,bruto:0,pdv:0,placenoB:0,status:'Nije počelo',prioritet:'Srednji',posto:0,pocetak:'',zavrsetak:''}},
-{id:2,naziv:'ROBA SA STOVARIŠTA',kat:'Materijal',jedMere:'sum',kolicina:1,jedCena:1554000,ugovoreno:'Ugovoreno',predvidjena:1554000,napomena:'',lamelaA:{izvodjac:'Dacić Prom',ugovorenaUnos:1470.0,tipCene:'NETO',neto:0,bruto:0,pdv:0,placenoB:300000,status:'Završeno',prioritet:'Visok',posto:100,pocetak:'',zavrsetak:''},lamelaB:{izvodjac:'',ugovorenaUnos:null,tipCene:'',neto:0,bruto:0,pdv:0,placenoB:0,status:'Nije počelo',prioritet:'Srednji',posto:0,pocetak:'',zavrsetak:''}},
+{id:2,naziv:'ROBA SA STOVARIŠTA',kat:'Materijal',jedMere:'sum',kolicina:1,jedCena:1554000,ugovoreno:'Ugovoreno',predvidjena:1554000,napomena:'',lamelaA:{izvodjac:'Dacić Prom',ugovorenaUnos:1470000,tipCene:'BRUTO',neto:0,bruto:0,pdv:0,placenoB:300000,status:'Završeno',prioritet:'Visok',posto:100,pocetak:'',zavrsetak:''},lamelaB:{izvodjac:'',ugovorenaUnos:null,tipCene:'',neto:0,bruto:0,pdv:0,placenoB:0,status:'Nije počelo',prioritet:'Srednji',posto:0,pocetak:'',zavrsetak:''}},
 {id:3,naziv:'KOMUNALIJE',kat:'Zakonski troškovi',jedMere:'m²',kolicina:10869,jedCena:92,ugovoreno:'Ugovoreno',predvidjena:1000000,napomena:'',lamelaA:{izvodjac:'Grad Novi Pazar',ugovorenaUnos:1000000.0,tipCene:'BRUTO',neto:0,bruto:0,pdv:0,placenoB:1000000,status:'Završeno',prioritet:'Visok',posto:100,pocetak:'',zavrsetak:''},lamelaB:{izvodjac:'',ugovorenaUnos:null,tipCene:'',neto:0,bruto:0,pdv:0,placenoB:0,status:'Nije počelo',prioritet:'Srednji',posto:0,pocetak:'',zavrsetak:''}},
 {id:4,naziv:'ELEKTRO RADOVI - MATERIJAL + UGRADNJA',kat:'Instalacije',jedMere:'m²',kolicina:23883,jedCena:20.93,ugovoreno:'',predvidjena:500000,napomena:'',lamelaA:{izvodjac:'',ugovorenaUnos:null,tipCene:'BRUTO',neto:0,bruto:0,pdv:0,placenoB:0,status:'Nije počelo',prioritet:'Visok',posto:0,pocetak:'',zavrsetak:''},lamelaB:{izvodjac:'',ugovorenaUnos:null,tipCene:'',neto:0,bruto:0,pdv:0,placenoB:0,status:'Nije počelo',prioritet:'Srednji',posto:0,pocetak:'',zavrsetak:''}},
 {id:5,naziv:'FASADNA STOLARIJA',kat:'Fini građevinski radovi',jedMere:'sum',kolicina:1,jedCena:358500,ugovoreno:'',predvidjena:358500,napomena:'',lamelaA:{izvodjac:'',ugovorenaUnos:null,tipCene:'BRUTO',neto:0,bruto:0,pdv:0,placenoB:0,status:'Nije počelo',prioritet:'Visok',posto:0,pocetak:'',zavrsetak:''},lamelaB:{izvodjac:'',ugovorenaUnos:null,tipCene:'',neto:0,bruto:0,pdv:0,placenoB:0,status:'Nije počelo',prioritet:'Srednji',posto:0,pocetak:'',zavrsetak:''}},
@@ -1969,10 +1969,12 @@ function rUplate(){
       if(!izvMap[naziv])izvMap[naziv]={naziv,ugoA:0,ugoB:0,predA:0,predB:0,ispostA:0,ispostB:0,placA:0,placB:0,avansA:0,avansB:0,sitA:0,sitB:0,hasA:false,hasB:false};
       const r=izvMap[naziv];
       const isUgo=s.ugovoreno==='Ugovoreno';
+      // Ugovorena: ako je ugovoreno i ima iznos - koristi ga, inače predvidjena
       const ugo=isUgo?(lobj.ugovorenaUnos?calcBruto(lobj.ugovorenaUnos,lobj.tipCene):(s.predvidjena||0)):0;
+      // Predviđena: puna vrijednost (izvođač pokriva cijelu stavku, lamela je samo organizaciona)
       const pred=s.predvidjena||0;
-      if(lbl==='A'){r.ugoA+=ugo;r.predA+=pred/2;r.placA+=lobj.placenoB||0;r.hasA=true;}
-      else{r.ugoB+=ugo;r.predB+=pred/2;r.placB+=lobj.placenoB||0;r.hasB=true;}
+      if(lbl==='A'){r.ugoA+=ugo;r.predA+=pred;r.placA+=lobj.placenoB||0;r.hasA=true;}
+      else{r.ugoB+=ugo;r.predB+=pred;r.placB+=lobj.placenoB||0;r.hasB=true;}
     };
     if(s.lamelaA.izvodjac)addIzv(s.lamelaA.izvodjac,s.lamelaA,'A');
     if(s.lamelaB.izvodjac)addIzv(s.lamelaB.izvodjac,s.lamelaB,'B');
