@@ -503,20 +503,16 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
               <span>Prihod stanovi</span><span id="kp-stan">—</span>
             </div>
 
-            <div style="font-size:11px;font-weight:600;color:var(--la);margin:12px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--la-border)">GARAŽE — 125 kom × 14.000 €</div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
-              <span style="color:var(--text2)">Fiksna cena/garaži</span><strong>14.000 €</strong>
-            </div>
+            <div style="font-size:11px;font-weight:600;color:var(--la);margin:12px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--la-border)">GARAŽE — 125 kom</div>
+            <div class="fg"><label>Cena po garaži (€)</label><input type="number" id="kc-gar" value="14000" oninput="rKalk()" placeholder="14000"></div>
             <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;font-weight:700;color:var(--la)">
-              <span>Prihod garaže</span><span id="kp-gar">1.750.000 €</span>
+              <span>Prihod garaže</span><span id="kp-gar">—</span>
             </div>
 
-            <div style="font-size:11px;font-weight:600;color:var(--la);margin:12px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--la-border)">OSTAVE — 431 m² × 1.000 €/m²</div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
-              <span style="color:var(--text2)">Fiksna cena/m²</span><strong>1.000 €</strong>
-            </div>
+            <div style="font-size:11px;font-weight:600;color:var(--la);margin:12px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--la-border)">OSTAVE — 431 m²</div>
+            <div class="fg"><label>Cena po m² ostave (€)</label><input type="number" id="kc-ost" value="1000" oninput="rKalk()" placeholder="1000"></div>
             <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;font-weight:700;color:var(--la)">
-              <span>Prihod ostave</span><span id="kp-ost">431.000 €</span>
+              <span>Prihod ostave</span><span id="kp-ost">—</span>
             </div>
 
             <div style="background:var(--la-light);border:1px solid var(--la-border);border-radius:7px;padding:12px;margin-top:10px">
@@ -2021,7 +2017,7 @@ function rUplate(){
     const openValute=sit.filter(s=>s.izvodjac===r.naziv&&s.statusPlacanja!=='placeno'&&s.rokPlacanja).length;
     const izvData=izv.find(x=>x.naziv===r.naziv);
     const avansStatus=izvData?.avansStatus||'';
-    const rowBg=openValute?'background:#FFFDF5':'';
+    const rowBg=openValute?'background:#FFFDF5;':'';
     return`<tr style="${rowBg}border-bottom:1px solid var(--border)">
       <td style="padding:10px 12px">
         <div style="font-weight:600;font-size:12px">${esc(r.naziv)}</div>
@@ -2396,11 +2392,13 @@ function rKasnjenja(){
 
 // ===== KALKULATOR =====
 function rKalk(){
-  const stanM2=7756, garKom=125, garCena=14000, ostM2=431, ostCena=1000;
+  const stanM2=7756, garKom=125, ostM2=431;
   const cStan=parseFloat(document.getElementById('kc-stan')?.value)||0;
+  const cGar=parseFloat(document.getElementById('kc-gar')?.value)||14000;
+  const cOst=parseFloat(document.getElementById('kc-ost')?.value)||1000;
   const pStan=stanM2*cStan;
-  const pGar=garKom*garCena;
-  const pOst=ostM2*ostCena;
+  const pGar=garKom*cGar;
+  const pOst=ostM2*cOst;
   const pTot=pStan+pGar+pOst;
   const elSet=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   elSet('kp-stan', fmt(pStan)+' €');
@@ -2596,6 +2594,8 @@ document.getElementById('mwrap').addEventListener('click',e=>{if(e.target===docu
 
 document.getElementById('btn-kas-pdf')?.addEventListener('click',exportKasPDF);
 document.getElementById('kc-stan')?.addEventListener('input',rKalk);
+document.getElementById('kc-gar')?.addEventListener('input',rKalk);
+document.getElementById('kc-ost')?.addEventListener('input',rKalk);
 document.getElementById('kd-prod')?.addEventListener('input',rKalk);
 document.getElementById('kd-ostali')?.addEventListener('input',rKalk);
 // kk-izv and kk-lam use inline onchange handlers
