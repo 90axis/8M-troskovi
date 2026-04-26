@@ -578,8 +578,11 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
 
     <!-- UPLATE -->
     <div class="page" id="page-uplate">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;flex-wrap:wrap;gap:8px">
-        <div style="font-size:12px;color:var(--text2)">Pregled obaveza prema ugovorenim izvođačima</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--text1)">Uplate po izvođačima</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">Pregled ugovorenih obaveza, ispostavljenih situacija i plaćanja</div>
+        </div>
         <div style="display:flex;gap:6px;align-items:center">
           <select id="upl-lam" style="font-size:12px;padding:3px 8px;height:27px;border-radius:6px;border:1px solid var(--border);background:#fff" onchange="rUplate()">
             <option value="sve">Sve lamele</option>
@@ -590,25 +593,23 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
         </div>
       </div>
 
-      <!-- Summary kartice -->
       <div id="upl-metrics" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"></div>
 
-      <!-- Tabela po izvođačima -->
       <div class="tbox">
         <div style="overflow-x:auto">
-          <table id="tbl-uplate">
+          <table id="tbl-uplate" style="width:100%;border-collapse:collapse;font-size:12px">
             <thead>
-              <tr class="hdr-group">
-                <th style="min-width:140px">Izvođač</th>
-                <th>Lamela</th>
-                <th style="text-align:right;background:var(--bg2)">Ugovorena<br>cena (€)</th>
-                <th style="text-align:right;background:#FFF5F0;color:var(--warn)">Avans<br>(€)</th>
-                <th style="text-align:right;background:#FFF8E8">Ispostavljeno<br>situacija (€)</th>
-                <th style="text-align:right;background:var(--fin-pl-light)">Plaćeno<br>(€)</th>
-                <th style="text-align:right;background:var(--fin-pr-light)">Preostalo za<br>plaćanje (€)</th>
-                <th style="min-width:110px">% izmireno</th>
-                <th>Br. sit.</th>
-                <th></th>
+              <tr style="background:var(--bg2);border-bottom:2px solid var(--border)">
+                <th style="padding:9px 12px;text-align:left;font-weight:600;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;min-width:160px">Izvođač</th>
+                <th style="padding:9px 8px;text-align:center;font-weight:600;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;width:60px">Lam.</th>
+                <th style="padding:9px 12px;text-align:right;font-weight:600;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;background:#EEF2F7">Ugovoreno</th>
+                <th style="padding:9px 12px;text-align:right;font-weight:600;font-size:11px;color:var(--warn);text-transform:uppercase;letter-spacing:.04em;background:#FFF8F0">Avans</th>
+                <th style="padding:9px 12px;text-align:right;font-weight:600;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;background:#FFFDF0">Ispostavljeno</th>
+                <th style="padding:9px 12px;text-align:right;font-weight:600;font-size:11px;color:var(--la);text-transform:uppercase;letter-spacing:.04em;background:var(--fin-pl-light)">Plaćeno</th>
+                <th style="padding:9px 12px;text-align:right;font-weight:600;font-size:11px;color:var(--fin-pr);text-transform:uppercase;letter-spacing:.04em;background:var(--fin-pr-light)">Preostalo</th>
+                <th style="padding:9px 12px;font-weight:600;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;min-width:120px">Izmireno</th>
+                <th style="padding:9px 8px;text-align:center;font-weight:600;font-size:11px;color:var(--text2);width:50px">Sit.</th>
+                <th style="padding:9px 8px;width:70px"></th>
               </tr>
             </thead>
             <tbody id="upl-body"></tbody>
@@ -948,9 +949,9 @@ function rStavke(){
     const sumPr=fil.reduce((a,s)=>a+Math.max(0,getUgoB(s)-getPl(s)),0);
     const lamTdF=lam==='A'?'sum-a':lam==='B'?'sum-b':'sum-a';
     foot.innerHTML=`<tr class="sum-row">
-      <td colspan="6" style="text-align:right;font-size:11px;letter-spacing:.03em">UKUPNO (${fil.length} stavki)</td>
-      <td class="sum-pred" style="text-align:right;background:var(--fin-pred-light)">${fmt(Math.round(sumPredN))}</td>
-      <td class="sum-pred" style="text-align:right;background:var(--fin-pred-light)">${fmt(Math.round(sumPredB))}</td>
+      <td colspan="7" style="text-align:right;font-size:11px;letter-spacing:.03em;padding:7px">UKUPNO — ${fil.length} stavki</td>
+      <td class="sum-pred" style="text-align:right">${fmt(Math.round(sumPredN))}</td>
+      <td class="sum-pred" style="text-align:right">${fmt(Math.round(sumPredB))}</td>
       <td class="${lamTdF}" style="text-align:right">${fmt(Math.round(sumUgoN))}</td>
       <td class="${lamTdF}" style="text-align:right">${fmt(Math.round(sumUgoB))}</td>
       <td class="sum-pdv" style="text-align:right">${sumPDV?fmt(Math.round(sumPDV)):'—'}</td>
@@ -1987,38 +1988,53 @@ function rUplate(){
     const statBase=v.ugo>0?v.ugo:v.pred;
     const preostalo=Math.max(0,statBase-v.plac);
     const pct=statBase>0?Math.min(100,Math.round(v.plac/statBase*100)):0;
-    const barCol=pct===100?'var(--lb)':pct>=50?'var(--la)':pct>0?'var(--warn)':'var(--border)';
+    const barCol=pct===100?'var(--lb)':pct>=50?'var(--la)':pct>0?'var(--warn)':'#ddd';
     const lamBadge=v.lamStr==='A+B'?'b-lab':v.lamStr==='A'?'b-la':'b-lb';
     const openValute=sit.filter(s=>s.izvodjac===r.naziv&&s.statusPlacanja!=='placeno'&&s.rokPlacanja).length;
     const izvData=izv.find(x=>x.naziv===r.naziv);
     const avansStatus=izvData?.avansStatus||'';
-    const avansBadge=avansStatus==='placen'?'b-paid':v.avans>0?'b-partial':'';
-    return`<tr>
-      <td style="font-weight:600">${esc(r.naziv)}
-        ${openValute?`<br><span style="font-size:9.5px;color:var(--warn)">⏰ ${openValute} otvorenih valuta</span>`:''}
-        ${izvData?.katIzv?`<br><span style="font-size:9px;color:var(--text2)">${esc(izvData.katIzv)}</span>`:''}
+    const rowBg=openValute?'background:#FFFDF5':'';
+    return`<tr style="${rowBg}border-bottom:1px solid var(--border)">
+      <td style="padding:10px 12px">
+        <div style="font-weight:600;font-size:12px">${esc(r.naziv)}</div>
+        ${izvData?.katIzv?`<div style="font-size:10.5px;color:var(--text2);margin-top:1px">📁 ${esc(izvData.katIzv)}</div>`:''}
+        ${openValute?`<div style="font-size:10px;color:var(--warn);margin-top:2px">⏰ ${openValute} valuta na naplatu</div>`:''}
       </td>
-      <td style="text-align:center"><span class="badge ${lamBadge}">${v.lamStr}</span></td>
-      <td style="text-align:right;background:var(--bg2)">
-        ${v.ugo>0?('<strong>'+fmt(Math.round(v.ugo))+' €</strong>'):('<span style="color:var(--text2);font-size:10px">—</span><br><span style="font-size:9.5px;color:var(--text2)">pred: '+fmt(Math.round(v.pred))+' €</span>')}
+      <td style="padding:10px 8px;text-align:center"><span class="badge ${lamBadge}">${v.lamStr}</span></td>
+      <td style="padding:10px 12px;text-align:right;background:#EEF2F7">
+        ${v.ugo>0
+          ?`<div style="font-weight:700;font-size:12px">${fmt(Math.round(v.ugo))} €</div>`
+          :`<div style="color:var(--text2);font-size:11px">—</div><div style="font-size:10px;color:var(--text2)">predv: ${fmt(Math.round(v.pred))} €</div>`}
       </td>
-      <td style="text-align:right;background:#FFF5F0">
-        ${v.avans>0?(('<strong>'+fmt(Math.round(v.avans))+' €</strong>')+(avansBadge?('<br><span class="badge '+avansBadge+'" style="font-size:9px">'+(avansStatus==='placen'?'Plaćen':'Čeka')+'</span>'):'')):('<span style="color:var(--text2)">—</span>')}
+      <td style="padding:10px 12px;text-align:right;background:#FFF8F0">
+        ${v.avans>0
+          ?`<div style="font-weight:600;font-size:12px;color:var(--warn)">${fmt(Math.round(v.avans))} €</div><div style="font-size:10px;margin-top:1px"><span class="badge ${avansStatus==='placen'?'b-paid':'b-partial'}" style="font-size:9px">${avansStatus==='placen'?'Plaćen':'Čeka'}</span></div>`
+          :`<div style="color:var(--text2);font-size:11px">—</div>`}
       </td>
-      <td style="text-align:right;background:#FFF8E8;color:var(--warn)">${fmt(Math.round(v.ispost))} €</td>
-      <td style="text-align:right;background:var(--fin-pl-light);color:var(--la);font-weight:600">${fmt(Math.round(v.plac))} €</td>
-      <td style="text-align:right;background:var(--fin-pr-light);color:${preostalo>0?'var(--fin-pr)':'var(--lb)'};font-weight:600">${fmt(Math.round(preostalo))} €</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:6px">
-          <div style="flex:1;height:7px;background:#eee;border-radius:4px;overflow:hidden;min-width:55px"><div style="height:100%;width:${pct}%;background:${barCol};border-radius:4px"></div></div>
-          <span style="font-size:10.5px;font-weight:600;color:${pct===100?'var(--lb)':pct>0?'var(--la)':'var(--text2)'};min-width:28px">${pct}%</span>
+      <td style="padding:10px 12px;text-align:right;background:#FFFDF0">
+        <div style="font-weight:600;font-size:12px;color:var(--warn)">${fmt(Math.round(v.ispost))} €</div>
+      </td>
+      <td style="padding:10px 12px;text-align:right;background:var(--fin-pl-light)">
+        <div style="font-weight:700;font-size:12px;color:var(--la)">${fmt(Math.round(v.plac))} €</div>
+      </td>
+      <td style="padding:10px 12px;text-align:right;background:var(--fin-pr-light)">
+        <div style="font-weight:700;font-size:12px;color:${preostalo>0?'var(--fin-pr)':'var(--lb)'}">${fmt(Math.round(preostalo))} €</div>
+      </td>
+      <td style="padding:10px 12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:8px;background:#e8e5de;border-radius:4px;overflow:hidden;min-width:60px">
+            <div style="height:100%;width:${pct}%;background:${barCol};border-radius:4px;transition:width .4s"></div>
+          </div>
+          <span style="font-size:11px;font-weight:700;min-width:32px;color:${pct===100?'var(--lb)':pct>0?'var(--la)':'var(--text2)'}">${pct}%</span>
         </div>
-        ${v.ugo===0&&v.pred>0?`<div style="font-size:9px;color:var(--text2);margin-top:1px">* predviđena</div>`:''}
+        ${v.ugo===0&&v.pred>0?'<div style="font-size:9.5px;color:var(--text2);margin-top:2px">* bazira na predviđenoj</div>':''}
       </td>
-      <td style="text-align:center;color:var(--text2);font-size:11px">${v.sit}</td>
-      <td><button class="btn btn-s" style="font-size:10px;padding:2px 7px;white-space:nowrap" onclick="oIzvDetail(${izvData?.id||0})">Detalji</button></td>
+      <td style="padding:10px 8px;text-align:center;color:var(--text2);font-size:12px">${v.sit}</td>
+      <td style="padding:10px 8px;text-align:center">
+        <button class="btn btn-s" style="font-size:11px;padding:3px 9px" onclick="oIzvDetail(${izvData?.id||0})">Detalji</button>
+      </td>
     </tr>`;
-  }).join('')||'<tr><td colspan="10" style="text-align:center;padding:16px;color:var(--text2)">Nema izvođača</td></tr>';
+  }).join('')||'<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text2)">Nema izvođača</td></tr>';
   const foot=document.getElementById('upl-foot');
   if(foot&&rows.length){
     const totUgo=rows.reduce((a,r)=>a+getVals(r).ugo,0);
@@ -2027,14 +2043,17 @@ function rUplate(){
     const totIspost=rows.reduce((a,r)=>a+getVals(r).ispost,0);
     const totPlac=rows.reduce((a,r)=>a+getVals(r).plac,0);
     const totPr=rows.reduce((a,r)=>{const v=getVals(r);return a+Math.max(0,(v.ugo>0?v.ugo:v.pred)-v.plac);},0);
-    foot.innerHTML=`<tr style="font-weight:700;font-size:12px;background:var(--bg2)">
-      <td colspan="2" style="padding:7px">UKUPNO (${rows.length} izvođača)</td>
-      <td style="text-align:right;padding:7px">${fmt(Math.round(totUgo))} €${totPred>0?`<br><span style="font-size:9px;font-weight:400;color:var(--text2)">+${fmt(Math.round(totPred))} € predv.</span>`:''}</td>
-      <td style="text-align:right;padding:7px;background:#FFF5F0;color:var(--warn)">${totAvans>0?fmt(Math.round(totAvans))+' €':'—'}</td>
-      <td style="text-align:right;padding:7px;color:var(--warn)">${fmt(Math.round(totIspost))} €</td>
-      <td style="text-align:right;padding:7px;color:var(--la)">${fmt(Math.round(totPlac))} €</td>
-      <td style="text-align:right;padding:7px;color:var(--fin-pr)">${fmt(Math.round(totPr))} €</td>
-      <td colspan="3" style="padding:7px;font-size:11px;font-weight:400;color:var(--text2)">${rows.reduce((a,r)=>{const v=getVals(r);return a+(v.ugo>0?v.ugo:v.pred);},0)>0?Math.round(totPlac/rows.reduce((a,r)=>{const v=getVals(r);return a+(v.ugo>0?v.ugo:v.pred);},0)*100):0}% izmireno</td>
+    const totPct=rows.reduce((a,r)=>{const v=getVals(r);return a+(v.ugo>0?v.ugo:v.pred);},0)>0?Math.round(totPlac/rows.reduce((a,r)=>{const v=getVals(r);return a+(v.ugo>0?v.ugo:v.pred);},0)*100):0;
+    foot.innerHTML=`<tr style="font-weight:700;font-size:12px;background:var(--bg2);border-top:2px solid var(--border)">
+      <td colspan="2" style="padding:10px 12px;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">Ukupno — ${rows.length} izvođača</td>
+      <td style="text-align:right;padding:10px 12px;background:#EEF2F7">
+        ${fmt(Math.round(totUgo))} €${totPred>0?`<br><span style="font-size:10px;font-weight:400;color:var(--text2)">+${fmt(Math.round(totPred))} predv.</span>`:''}
+      </td>
+      <td style="text-align:right;padding:10px 12px;background:#FFF8F0;color:var(--warn)">${totAvans>0?fmt(Math.round(totAvans))+' €':'—'}</td>
+      <td style="text-align:right;padding:10px 12px;background:#FFFDF0;color:var(--warn)">${fmt(Math.round(totIspost))} €</td>
+      <td style="text-align:right;padding:10px 12px;background:var(--fin-pl-light);color:var(--la)">${fmt(Math.round(totPlac))} €</td>
+      <td style="text-align:right;padding:10px 12px;background:var(--fin-pr-light);color:var(--fin-pr)">${fmt(Math.round(totPr))} €</td>
+      <td colspan="3" style="padding:10px 12px;font-size:11px;font-weight:600;color:var(--text2)">${totPct}% ukupno izmireno</td>
     </tr>`;
   }
   const metrics=document.getElementById('upl-metrics');
