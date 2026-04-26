@@ -1962,140 +1962,144 @@ function gDragStart(e,el){
 
 // ===== UPLATE =====
 function rUplate(){
-  const lamFil=document.getElementById('upl-lam')?.value||'sve';
+  const lamFil=(document.getElementById('upl-lam')||{value:'sve'}).value||'sve';
   const izvMap={};
-  stavke.forEach(s=>{
-    const addIzv=(naziv,lobj,lbl)=>{
+
+  stavke.forEach(function(s){
+    function addIzv(naziv,lobj,lbl){
       if(!naziv)return;
       if(!izvMap[naziv])izvMap[naziv]={naziv,ugoA:0,ugoB:0,predA:0,predB:0,ispostA:0,ispostB:0,placA:0,placB:0,avansA:0,avansB:0,sitA:0,sitB:0,hasA:false,hasB:false};
-      const r=izvMap[naziv];
-      const isUgo=s.ugovoreno==='Ugovoreno';
-      // Ugovorena: ako je ugovoreno i ima iznos - koristi ga, inače predvidjena
-      const ugo=isUgo?(lobj.ugovorenaUnos?calcBruto(lobj.ugovorenaUnos,lobj.tipCene):(s.predvidjena||0)):0;
-      // Predviđena: puna vrijednost (izvođač pokriva cijelu stavku, lamela je samo organizaciona)
-      const pred=s.predvidjena||0;
+      var r=izvMap[naziv];
+      var isUgo=s.ugovoreno==='Ugovoreno';
+      var ugo=isUgo?(lobj.ugovorenaUnos?calcBruto(lobj.ugovorenaUnos,lobj.tipCene):(s.predvidjena||0)):0;
+      var pred=s.predvidjena||0;
       if(lbl==='A'){r.ugoA+=ugo;r.predA+=pred;r.placA+=lobj.placenoB||0;r.hasA=true;}
       else{r.ugoB+=ugo;r.predB+=pred;r.placB+=lobj.placenoB||0;r.hasB=true;}
-    };
+    }
     if(s.lamelaA.izvodjac)addIzv(s.lamelaA.izvodjac,s.lamelaA,'A');
     if(s.lamelaB.izvodjac)addIzv(s.lamelaB.izvodjac,s.lamelaB,'B');
   });
-  // Avans iz izv registra
-  izv.forEach(i=>{
+
+  izv.forEach(function(i){
     if(!i.naziv||!izvMap[i.naziv])return;
-    const r=izvMap[i.naziv];const av=i.avans||0;const ll=i.lamelaIzv||'Oba';
+    var r=izvMap[i.naziv];
+    var av=i.avans||0;
+    var ll=i.lamelaIzv||'Oba';
     if(ll==='A'||ll==='Oba')r.avansA+=ll==='Oba'?av/2:av;
     if(ll==='B'||ll==='Oba')r.avansB+=ll==='Oba'?av/2:av;
   });
-  // Situacije
-  sit.forEach(s=>{
+
+  sit.forEach(function(s){
     if(!s.izvodjac||!izvMap[s.izvodjac])return;
-    const r=izvMap[s.izvodjac];const iznos=s.iznos||0;
-    if(s.lamela==='A'){r.ispostA+=iznos;}
-    else if(s.lamela==='B'){r.ispostB+=iznos;}
+    var r=izvMap[s.izvodjac];
+    var iznos=s.iznos||0;
+    if(s.lamela==='A')r.ispostA+=iznos;
+    else if(s.lamela==='B')r.ispostB+=iznos;
     else{r.ispostA+=iznos/2;r.ispostB+=iznos/2;}
     if(s.lamela==='A'||s.lamela==='Oba')r.sitA++;
     if(s.lamela==='B'||s.lamela==='Oba')r.sitB++;
   });
-  let rows=Object.values(izvMap).sort((a,b)=>(b.ugoA+b.ugoB+b.predA+b.predB)-(a.ugoA+a.ugoB+a.predA+a.predB));
-  if(lamFil==='A')rows=rows.filter(r=>r.hasA);
-  if(lamFil==='B')rows=rows.filter(r=>r.hasB);
-  const getVals=(r)=>{
+
+  var rows=Object.values(izvMap).sort(function(a,b){
+    return(b.ugoA+b.ugoB+b.predA+b.predB)-(a.ugoA+a.ugoB+a.predA+a.predB);
+  });
+  if(lamFil==='A')rows=rows.filter(function(r){return r.hasA;});
+  if(lamFil==='B')rows=rows.filter(function(r){return r.hasB;});
+
+  function getVals(r){
     if(lamFil==='A')return{ugo:r.ugoA,pred:r.predA,ispost:r.ispostA,plac:r.placA,avans:r.avansA,sit:r.sitA,lamStr:'A'};
     if(lamFil==='B')return{ugo:r.ugoB,pred:r.predB,ispost:r.ispostB,plac:r.placB,avans:r.avansB,sit:r.sitB,lamStr:'B'};
-    return{ugo:r.ugoA+r.ugoB,pred:r.predA+r.predB,ispost:r.ispostA+r.ispostB,plac:r.placA+r.placB,avans:r.avansA+r.avansB,sit:r.sitA+r.sitB,lamStr:r.hasA&&r.hasB?'A+B':r.hasA?'A':'B'};
-  };
-  const body=document.getElementById('upl-body');
-  if(!body){setTimeout(rUplate,100);return;}
-  body.innerHTML=rows.map(r=>{
-    const v=getVals(r);
-    const statBase=v.ugo>0?v.ugo:v.pred;
-    const preostalo=Math.max(0,statBase-v.plac);
-    const pct=statBase>0?Math.min(100,Math.round(v.plac/statBase*100)):0;
-    const barCol=pct===100?'var(--lb)':pct>=50?'var(--la)':pct>0?'var(--warn)':'#ddd';
-    const lamBadge=v.lamStr==='A+B'?'b-lab':v.lamStr==='A'?'b-la':'b-lb';
-    const openValute=sit.filter(s=>s.izvodjac===r.naziv&&s.statusPlacanja!=='placeno'&&s.rokPlacanja).length;
-    const izvData=izv.find(x=>x.naziv===r.naziv);
-    const avansStatus=izvData?.avansStatus||'';
-    const rowBg=openValute?'background:#FFFDF5;':'';
-    return`<tr style="${rowBg}border-bottom:1px solid var(--border)">
-      <td style="padding:10px 12px">
-        <div style="font-weight:600;font-size:12px">${esc(r.naziv)}</div>
-        ${izvData?.katIzv?`<div style="font-size:10.5px;color:var(--text2);margin-top:1px">📁 ${esc(izvData.katIzv)}</div>`:''}
-        ${openValute?`<div style="font-size:10px;color:var(--warn);margin-top:2px">⏰ ${openValute} valuta na naplatu</div>`:''}
-      </td>
-      <td style="padding:10px 8px;text-align:center"><span class="badge ${lamBadge}">${v.lamStr}</span></td>
-      <td style="padding:10px 12px;text-align:right;background:#EEF2F7">
-        ${v.ugo>0
-          ?`<div style="font-weight:700;font-size:12px">${fmt(Math.round(v.ugo))} €</div>`
-          :`<div style="color:var(--text2);font-size:11px">—</div><div style="font-size:10px;color:var(--text2)">predv: ${fmt(Math.round(v.pred))} €</div>`}
-      </td>
-      <td style="padding:10px 12px;text-align:right;background:#FFF8F0">
-        ${v.avans>0
-          ?`<div style="font-weight:600;font-size:12px;color:var(--warn)">${fmt(Math.round(v.avans))} €</div><div style="font-size:10px;margin-top:1px"><span class="badge ${avansStatus==='placen'?'b-paid':'b-partial'}" style="font-size:9px">${avansStatus==='placen'?'Plaćen':'Čeka'}</span></div>`
-          :`<div style="color:var(--text2);font-size:11px">—</div>`}
-      </td>
-      <td style="padding:10px 12px;text-align:right;background:#FFFDF0">
-        <div style="font-weight:600;font-size:12px;color:var(--warn)">${fmt(Math.round(v.ispost))} €</div>
-      </td>
-      <td style="padding:10px 12px;text-align:right;background:var(--fin-pl-light)">
-        <div style="font-weight:700;font-size:12px;color:var(--la)">${fmt(Math.round(v.plac))} €</div>
-      </td>
-      <td style="padding:10px 12px;text-align:right;background:var(--fin-pr-light)">
-        <div style="font-weight:700;font-size:12px;color:${preostalo>0?'var(--fin-pr)':'var(--lb)'}">${fmt(Math.round(preostalo))} €</div>
-      </td>
-      <td style="padding:10px 12px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="flex:1;height:8px;background:#e8e5de;border-radius:4px;overflow:hidden;min-width:60px">
-            <div style="height:100%;width:${pct}%;background:${barCol};border-radius:4px;transition:width .4s"></div>
-          </div>
-          <span style="font-size:11px;font-weight:700;min-width:32px;color:${pct===100?'var(--lb)':pct>0?'var(--la)':'var(--text2)'}">${pct}%</span>
-        </div>
-        ${v.ugo===0&&v.pred>0?'<div style="font-size:9.5px;color:var(--text2);margin-top:2px">* bazira na predviđenoj</div>':''}
-      </td>
-      <td style="padding:10px 8px;text-align:center;color:var(--text2);font-size:12px">${v.sit}</td>
-      <td style="padding:10px 8px;text-align:center">
-        <button class="btn btn-s" style="font-size:11px;padding:3px 9px" onclick="oIzvDetail(${izvData?.id||0})">Detalji</button>
-      </td>
-    </tr>`;
-  }).join('')||'<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text2)">Nema izvođača</td></tr>';
-  const foot=document.getElementById('upl-foot');
-  if(foot&&rows.length){
-    const totUgo=rows.reduce((a,r)=>a+getVals(r).ugo,0);
-    const totPred=rows.reduce((a,r)=>a+(getVals(r).ugo===0?getVals(r).pred:0),0);
-    const totAvans=rows.reduce((a,r)=>a+getVals(r).avans,0);
-    const totIspost=rows.reduce((a,r)=>a+getVals(r).ispost,0);
-    const totPlac=rows.reduce((a,r)=>a+getVals(r).plac,0);
-    const totPr=rows.reduce((a,r)=>{const v=getVals(r);return a+Math.max(0,(v.ugo>0?v.ugo:v.pred)-v.plac);},0);
-    const totPct=rows.reduce((a,r)=>{const v=getVals(r);return a+(v.ugo>0?v.ugo:v.pred);},0)>0?Math.round(totPlac/rows.reduce((a,r)=>{const v=getVals(r);return a+(v.ugo>0?v.ugo:v.pred);},0)*100):0;
-    foot.innerHTML=`<tr style="font-weight:700;font-size:12px;background:var(--bg2);border-top:2px solid var(--border)">
-      <td colspan="2" style="padding:10px 12px;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">Ukupno — ${rows.length} izvođača</td>
-      <td style="text-align:right;padding:10px 12px;background:#EEF2F7">
-        ${fmt(Math.round(totUgo))} €${totPred>0?`<br><span style="font-size:10px;font-weight:400;color:var(--text2)">+${fmt(Math.round(totPred))} predv.</span>`:''}
-      </td>
-      <td style="text-align:right;padding:10px 12px;background:#FFF8F0;color:var(--warn)">${totAvans>0?fmt(Math.round(totAvans))+' €':'—'}</td>
-      <td style="text-align:right;padding:10px 12px;background:#FFFDF0;color:var(--warn)">${fmt(Math.round(totIspost))} €</td>
-      <td style="text-align:right;padding:10px 12px;background:var(--fin-pl-light);color:var(--la)">${fmt(Math.round(totPlac))} €</td>
-      <td style="text-align:right;padding:10px 12px;background:var(--fin-pr-light);color:var(--fin-pr)">${fmt(Math.round(totPr))} €</td>
-      <td colspan="3" style="padding:10px 12px;font-size:11px;font-weight:600;color:var(--text2)">${totPct}% ukupno izmireno</td>
-    </tr>`;
+    return{ugo:r.ugoA+r.ugoB,pred:r.predA+r.predB,ispost:r.ispostA+r.ispostB,plac:r.placA+r.placB,avans:r.avansA+r.avansB,sit:r.sitA+r.sitB,lamStr:(r.hasA&&r.hasB)?'A+B':r.hasA?'A':'B'};
   }
-  const metrics=document.getElementById('upl-metrics');
+
+  var body=document.getElementById('upl-body');
+  if(!body){setTimeout(rUplate,200);return;}
+
+  if(!rows.length){
+    body.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text2)">Nema izvođača u predmeru</td></tr>';
+    return;
+  }
+
+  var html='';
+  rows.forEach(function(r){
+    var v=getVals(r);
+    var statBase=v.ugo>0?v.ugo:v.pred;
+    var preostalo=Math.max(0,statBase-v.plac);
+    var pct=statBase>0?Math.min(100,Math.round(v.plac/statBase*100)):0;
+    var barCol=pct===100?'var(--lb)':pct>=50?'var(--la)':pct>0?'var(--warn)':'#ddd';
+    var lamBadge=v.lamStr==='A+B'?'b-lab':v.lamStr==='A'?'b-la':'b-lb';
+    var openValute=sit.filter(function(s){return s.izvodjac===r.naziv&&s.statusPlacanja!=='placeno'&&s.rokPlacanja;}).length;
+    var izvData=izv.find(function(x){return x.naziv===r.naziv;});
+    var avansStatus=izvData&&izvData.avansStatus?izvData.avansStatus:'';
+    var ugoCell=v.ugo>0
+      ?('<div style="font-weight:700;font-size:12px">'+fmt(Math.round(v.ugo))+' \u20ac</div>')
+      :('<div style="color:var(--text2);font-size:11px">&#8212;</div><div style="font-size:10px;color:var(--text2)">predv: '+fmt(Math.round(v.pred))+' \u20ac</div>');
+    var avansCell=v.avans>0
+      ?('<div style="font-weight:600;font-size:12px;color:var(--warn)">'+fmt(Math.round(v.avans))+' \u20ac</div>'
+        +'<div style="font-size:10px;margin-top:1px"><span class="badge '+(avansStatus==='placen'?'b-paid':'b-partial')+'" style="font-size:9px">'+(avansStatus==='placen'?'Pla\u0107en':'\u010ceka')+'</span></div>')
+      :'<div style="color:var(--text2);font-size:11px">&#8212;</div>';
+    var noteCell=openValute?('<div style="font-size:10px;color:var(--warn);margin-top:2px">\u23f0 '+openValute+' valuta na naplatu</div>'):'';
+    var katCell=izvData&&izvData.katIzv?('<div style="font-size:10.5px;color:var(--text2);margin-top:1px">\uD83D\uDCC1 '+esc(izvData.katIzv)+'</div>'):'';
+    var baseStyle=openValute?'background:#FFFDF5;':'';
+    html+='<tr style="'+baseStyle+'border-bottom:1px solid var(--border)">';
+    html+='<td style="padding:10px 12px"><div style="font-weight:600;font-size:12px">'+esc(r.naziv)+'</div>'+katCell+noteCell+'</td>';
+    html+='<td style="padding:10px 8px;text-align:center"><span class="badge '+lamBadge+'">'+v.lamStr+'</span></td>';
+    html+='<td style="padding:10px 12px;text-align:right;background:#EEF2F7">'+ugoCell+'</td>';
+    html+='<td style="padding:10px 12px;text-align:right;background:#FFF8F0">'+avansCell+'</td>';
+    html+='<td style="padding:10px 12px;text-align:right;background:#FFFDF0"><div style="font-weight:600;font-size:12px;color:var(--warn)">'+fmt(Math.round(v.ispost))+' \u20ac</div></td>';
+    html+='<td style="padding:10px 12px;text-align:right;background:var(--fin-pl-light)"><div style="font-weight:700;font-size:12px;color:var(--la)">'+fmt(Math.round(v.plac))+' \u20ac</div></td>';
+    html+='<td style="padding:10px 12px;text-align:right;background:var(--fin-pr-light)"><div style="font-weight:700;font-size:12px;color:'+(preostalo>0?'var(--fin-pr)':'var(--lb)')+'">'+fmt(Math.round(preostalo))+' \u20ac</div></td>';
+    html+='<td style="padding:10px 12px">';
+    html+='<div style="display:flex;align-items:center;gap:8px">';
+    html+='<div style="flex:1;height:8px;background:#e8e5de;border-radius:4px;overflow:hidden;min-width:60px">';
+    html+='<div style="height:100%;width:'+pct+'%;background:'+barCol+';border-radius:4px"></div></div>';
+    html+='<span style="font-size:11px;font-weight:700;min-width:32px;color:'+(pct===100?'var(--lb)':pct>0?'var(--la)':'var(--text2)')+'">'+pct+'%</span></div>';
+    if(v.ugo===0&&v.pred>0)html+='<div style="font-size:9.5px;color:var(--text2);margin-top:2px">* predvi\u0111ena</div>';
+    html+='</td>';
+    html+='<td style="padding:10px 8px;text-align:center;color:var(--text2);font-size:12px">'+v.sit+'</td>';
+    html+='<td style="padding:10px 8px;text-align:center"><button class="btn btn-s" style="font-size:11px;padding:3px 9px" onclick="oIzvDetail('+(izvData?izvData.id:0)+')">Detalji</button></td>';
+    html+='</tr>';
+  });
+  body.innerHTML=html;
+
+  var foot=document.getElementById('upl-foot');
+  if(foot&&rows.length){
+    var totUgo=rows.reduce(function(a,r){return a+getVals(r).ugo;},0);
+    var totPred=rows.reduce(function(a,r){var v=getVals(r);return a+(v.ugo===0?v.pred:0);},0);
+    var totAvans=rows.reduce(function(a,r){return a+getVals(r).avans;},0);
+    var totIspost=rows.reduce(function(a,r){return a+getVals(r).ispost;},0);
+    var totPlac=rows.reduce(function(a,r){return a+getVals(r).plac;},0);
+    var totPr=rows.reduce(function(a,r){var v=getVals(r);return a+Math.max(0,(v.ugo>0?v.ugo:v.pred)-v.plac);},0);
+    var totBase=rows.reduce(function(a,r){var v=getVals(r);return a+(v.ugo>0?v.ugo:v.pred);},0);
+    var totPct=totBase>0?Math.round(totPlac/totBase*100):0;
+    foot.innerHTML='<tr style="font-weight:700;font-size:12px;background:var(--bg2);border-top:2px solid var(--border)">'
+      +'<td colspan="2" style="padding:10px 12px;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">Ukupno \u2014 '+rows.length+' izvođača</td>'
+      +'<td style="text-align:right;padding:10px 12px;background:#EEF2F7">'+fmt(Math.round(totUgo))+' \u20ac'+(totPred>0?'<br><span style="font-size:10px;font-weight:400;color:var(--text2)">+'+fmt(Math.round(totPred))+' predv.</span>':'')+'</td>'
+      +'<td style="text-align:right;padding:10px 12px;background:#FFF8F0;color:var(--warn)">'+(totAvans>0?fmt(Math.round(totAvans))+' \u20ac':'&#8212;')+'</td>'
+      +'<td style="text-align:right;padding:10px 12px;background:#FFFDF0;color:var(--warn)">'+fmt(Math.round(totIspost))+' \u20ac</td>'
+      +'<td style="text-align:right;padding:10px 12px;background:var(--fin-pl-light);color:var(--la)">'+fmt(Math.round(totPlac))+' \u20ac</td>'
+      +'<td style="text-align:right;padding:10px 12px;background:var(--fin-pr-light);color:var(--fin-pr)">'+fmt(Math.round(totPr))+' \u20ac</td>'
+      +'<td colspan="3" style="padding:10px 12px;font-size:11px;font-weight:600;color:var(--text2)">'+totPct+'% izmireno</td>'
+      +'</tr>';
+  }
+
+  var metrics=document.getElementById('upl-metrics');
   if(metrics){
-    const totUgo=rows.reduce((a,r)=>a+getVals(r).ugo,0);
-    const totPred=rows.reduce((a,r)=>a+(getVals(r).ugo===0?getVals(r).pred:0),0);
-    const totAvans=rows.reduce((a,r)=>a+getVals(r).avans,0);
-    const totIspost=rows.reduce((a,r)=>a+getVals(r).ispost,0);
-    const totPlac=rows.reduce((a,r)=>a+getVals(r).plac,0);
-    const totBase=totUgo+totPred;
-    metrics.innerHTML=`
-      <div class="mc mc-n"><div class="lbl">Ugovoreno${totPred>0?' / Predviđeno':''}</div><div class="val">${fmt(Math.round(totUgo))} €</div><div class="sub">${totPred>0?`+${fmt(Math.round(totPred))} € predv. · ${rows.length} izv.`:`${rows.length} izvođača`}</div></div>
-      <div class="mc" style="border-top-color:#FFB300"><div class="lbl">Avansi</div><div class="val" style="color:#E65100">${fmt(Math.round(totAvans))} €</div><div class="sub">ugovoreno avansno</div></div>
-      <div class="mc mc-a"><div class="lbl">Plaćeno</div><div class="val" style="color:var(--la)">${fmt(Math.round(totPlac))} €</div><div class="sub">${totBase>0?Math.round(totPlac/totBase*100):0}% od baze</div></div>
-      <div class="mc mc-w"><div class="lbl">Preostalo</div><div class="val" style="color:var(--fin-pr)">${fmt(Math.round(Math.max(0,totBase-totPlac)))} €</div><div class="sub">ispostavljeno: ${fmt(Math.round(totIspost))} €</div></div>`;
+    var mUgo=rows.reduce(function(a,r){return a+getVals(r).ugo;},0);
+    var mPred=rows.reduce(function(a,r){var v=getVals(r);return a+(v.ugo===0?v.pred:0);},0);
+    var mAvans=rows.reduce(function(a,r){return a+getVals(r).avans;},0);
+    var mIspost=rows.reduce(function(a,r){return a+getVals(r).ispost;},0);
+    var mPlac=rows.reduce(function(a,r){return a+getVals(r).plac;},0);
+    var mBase=mUgo+mPred;
+    metrics.innerHTML=''
+      +'<div class="mc mc-n"><div class="lbl">Ugovoreno'+(mPred>0?' / Predvi\u0111eno':'')+'</div><div class="val">'+fmt(Math.round(mUgo))+' \u20ac</div>'
+      +'<div class="sub">'+(mPred>0?'+'+fmt(Math.round(mPred))+' \u20ac predv. \u00b7 ':'')+rows.length+' izvođača</div></div>'
+      +'<div class="mc" style="border-top-color:#FFB300"><div class="lbl">Avansi</div><div class="val" style="color:#E65100">'+fmt(Math.round(mAvans))+' \u20ac</div><div class="sub">ugovoreno avansno</div></div>'
+      +'<div class="mc mc-a"><div class="lbl">Pla\u0107eno</div><div class="val" style="color:var(--la)">'+fmt(Math.round(mPlac))+' \u20ac</div><div class="sub">'+(mBase>0?Math.round(mPlac/mBase*100):0)+'% od baze</div></div>'
+      +'<div class="mc mc-w"><div class="lbl">Preostalo</div><div class="val" style="color:var(--fin-pr)">'+fmt(Math.round(Math.max(0,mBase-mPlac)))+' \u20ac</div>'
+      +'<div class="sub">ispostavljeno: '+fmt(Math.round(mIspost))+' \u20ac</div></div>';
   }
 }
-
 
 function exportUplatePDF(){
   const lamFil=document.getElementById('upl-lam')?.value||'sve';
