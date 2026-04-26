@@ -495,7 +495,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
           <div class="sec">Prihodi od prodaje</div>
           <div class="tbox" style="padding:14px">
             <div style="font-size:11px;font-weight:600;color:var(--la);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--la-border)">STANOVI — 7.756 m²</div>
-            <div class="fg"><label>Cena po m² (€)</label><input type="number" id="kc-stan" value="1800" oninput="rKalk()" placeholder="€/m²"></div>
+            <div class="fg"><label>Cena po m² (€)</label><input type="number" id="kc-stan" value="1400" oninput="rKalk()" placeholder="€/m²"></div>
             <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
               <span style="color:var(--text2)">Površina</span><strong>7.756 m²</strong>
             </div>
@@ -850,6 +850,11 @@ function nav(pg){
   document.getElementById('page-'+pg).classList.add('active');
   const nm={home:'Home',predmer:'Predmer',izvodjaci:'Izvođači',gantt:'Gantt',situacije:'Situacije',kasnjenja:'⚠ Kašnjenja',uplate:'💳 Uplate',kalkulator:'Kalkulator isplativosti'};
   document.getElementById('ptitle').textContent=nm[pg]||pg;
+  // Render on navigate (elements are visible now)
+  if(pg==='uplate') rUplate();
+  if(pg==='kalkulator') rKalk();
+  if(pg==='kasnjenja') rKasnjenja();
+  if(pg==='gantt') rGantt();
 }
 
 // ===== HOME =====
@@ -2004,7 +2009,8 @@ function rUplate(){
     if(lamFil==='B')return{ugo:r.ugoB,pred:r.predB,ispost:r.ispostB,plac:r.placB,avans:r.avansB,sit:r.sitB,lamStr:'B'};
     return{ugo:r.ugoA+r.ugoB,pred:r.predA+r.predB,ispost:r.ispostA+r.ispostB,plac:r.placA+r.placB,avans:r.avansA+r.avansB,sit:r.sitA+r.sitB,lamStr:r.hasA&&r.hasB?'A+B':r.hasA?'A':'B'};
   };
-  const body=document.getElementById('upl-body');if(!body)return;
+  const body=document.getElementById('upl-body');
+  if(!body){setTimeout(rUplate,100);return;}
   body.innerHTML=rows.map(r=>{
     const v=getVals(r);
     const statBase=v.ugo>0?v.ugo:v.pred;
@@ -2405,13 +2411,17 @@ function rKalk(){
   // Troškovi: za svaku stavku — ako ima izvođača koristi ugovorenu cenu, inače predviđenu
   // Ova logika se primenjuje neovisno od aktivne lamele (gledamo obe lamele zajedno)
   const getKalkBase=(s)=>{
-    const hasA=!!s.lamelaA.izvodjac, hasB=!!s.lamelaB.izvodjac;
+    // Logika: ako stavka ima bilo kojeg izvođača -> koristi ugovorenu cijenu (punu, ne po lameli)
+    // Ako nema izvođača ni na A ni na B -> koristi predviđenu
+    const la=s.lamelaA, lb=s.lamelaB;
+    const hasA=!!la.izvodjac, hasB=!!lb.izvodjac;
     if(!hasA && !hasB) return s.predvidjena||0;
-    // Lamela A
-    const ugoA=hasA?(s.lamelaA.ugovorenaUnos?calcBruto(s.lamelaA.ugovorenaUnos,s.lamelaA.tipCene):(s.predvidjena/2||0)):s.predvidjena/2||0;
-    // Lamela B
-    const ugoB=hasB?(s.lamelaB.ugovorenaUnos?calcBruto(s.lamelaB.ugovorenaUnos,s.lamelaB.tipCene):(s.predvidjena/2||0)):s.predvidjena/2||0;
-    return ugoA+ugoB;
+    // Ima izvođača - uzimamo ugovorenu ako postoji, inače predviđenu
+    // Prioritet: A izvođač (primarni), pa B
+    if(hasA && la.ugovorenaUnos) return calcBruto(la.ugovorenaUnos, la.tipCene);
+    if(hasB && lb.ugovorenaUnos) return calcBruto(lb.ugovorenaUnos, lb.tipCene);
+    // Ima izvođača ali nema upisanu ugovorenu cijenu -> predviđena
+    return s.predvidjena||0;
   };
   const tBase=stavke.reduce((a,s)=>a+getKalkBase(s),0); // realna baza: ugo tamo gde postoji, pred gde ne
   const tUgo=stavke.reduce((a,s)=>a+getUgoB(s),0);      // samo ugovorene (za prikaz u redu "Ugovoreno")
