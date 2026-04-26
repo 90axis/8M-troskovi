@@ -602,6 +602,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
                 <th style="min-width:140px">Izvođač</th>
                 <th>Lamela</th>
                 <th style="text-align:right;background:var(--bg2)">Ugovorena<br>cena (€)</th>
+                <th style="text-align:right;background:#FFF5F0;color:var(--warn)">Avans<br>(€)</th>
                 <th style="text-align:right;background:#FFF8E8">Ispostavljeno<br>situacija (€)</th>
                 <th style="text-align:right;background:var(--fin-pl-light)">Plaćeno<br>(€)</th>
                 <th style="text-align:right;background:var(--fin-pr-light)">Preostalo za<br>plaćanje (€)</th>
@@ -1218,10 +1219,12 @@ function oM(type,id){
   else if(type==='izv'){
     const d=id?izv.find(i=>i.id===id):{};
     if(id&&d.ugovorPdf) window._pd={naziv:d.ugovorNaziv||'',data:d.ugovorPdf};
+    const kats=['Grubi građevinski radovi','Fini građevinski radovi','Instalacije','Materijal','Zemljani radovi','Zakonski troškovi','Pravni troškovi','Projektni troškovi','Administrativni troškovi','Opšti troškovi','Troškovi uređenja partera','Radna snaga','Marketing'];
     mc.innerHTML=`<h2>${id?'Uredi izvođača':'Novi izvođač'}</h2>
+
       <div class="fg"><label>Naziv firme *</label><input id="m-naziv" value="${esc(d.naziv||'')}"></div>
       <div class="fr">
-        <div class="fg"><label>PIB (poreski ID broj)</label><input id="m-pib" value="${esc(d.pib||'')}" placeholder="123456789"></div>
+        <div class="fg"><label>PIB</label><input id="m-pib" value="${esc(d.pib||'')}" placeholder="123456789"></div>
         <div class="fg"><label>Matični broj</label><input id="m-mb" value="${esc(d.mb||'')}" placeholder="12345678"></div>
       </div>
       <div class="fr">
@@ -1229,15 +1232,86 @@ function oM(type,id){
         <div class="fg"><label>Telefon</label><input id="m-tel" value="${esc(d.telefon||'')}"></div>
       </div>
       <div class="fg"><label>Email</label><input id="m-email" value="${esc(d.email||'')}"></div>
+
       <div class="divl"></div>
-      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Nadzorni organ / inspektor</div>
+      <div style="font-size:11px;font-weight:700;color:var(--la);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">📋 Detalji angažmana</div>
+
       <div class="fr">
-        <div class="fg"><label>Ime i prezime nadzornog organa</label><input id="m-nadzorni-ime" value="${esc(d.nadzorniIme||'')}" placeholder="npr. Petar Petrović"></div>
-        <div class="fg"><label>Telefon nadzornog organa</label><input id="m-nadzorni-tel" value="${esc(d.nadzorniTel||'')}" placeholder="+381..."></div>
+        <div class="fg"><label>Vrsta radova / opis</label>
+          <select id="m-kat-izv">
+            <option value="">— odaberi —</option>
+            ${kats.map(k=>`<option ${k===(d.katIzv||'')?'selected':''}>${k}</option>`).join('')}
+          </select>
+        </div>
+        <div class="fg"><label>Lamela angažmana</label>
+          <select id="m-lam-izv">
+            <option value="Oba" ${(d.lamelaIzv||'Oba')==='Oba'?'selected':''}>Oba</option>
+            <option value="A" ${d.lamelaIzv==='A'?'selected':''}>Lamela A</option>
+            <option value="B" ${d.lamelaIzv==='B'?'selected':''}>Lamela B</option>
+          </select>
+        </div>
       </div>
-      <div class="fg"><label>Firma / organizacija nadzornog organa</label><input id="m-nadzorni-firma" value="${esc(d.nadzorniFirma||'')}" placeholder="npr. Nadzor d.o.o."></div>
+
+      <div class="fr3">
+        <div class="fg"><label>Jedinična cena (€)</label>
+          <input id="m-jed-cena" type="number" value="${d.jedCenaIzv||''}" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <div class="fg"><label>Ukupna ugovorena cena (€)</label>
+          <input id="m-ugo-cena" type="number" value="${d.ugoCenaIzv||''}" placeholder="0.00" min="0" step="0.01" oninput="calcAvansPreview()">
+        </div>
+        <div class="fg"><label>Tip cene</label>
+          <select id="m-tip-izv">
+            <option value="BRUTO" ${(d.tipCeneIzv||'BRUTO')==='BRUTO'?'selected':''}>BRUTO</option>
+            <option value="NETO" ${d.tipCeneIzv==='NETO'?'selected':''}>NETO</option>
+          </select>
+        </div>
+      </div>
+
       <div class="divl"></div>
-      <div class="fg"><label>Napomena / opis angažmana</label><textarea id="m-nap">${esc(d.napomena||'')}</textarea></div>
+      <div style="font-size:11px;font-weight:700;color:var(--lb);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">💵 Avans i plaćanje</div>
+
+      <div class="fr3">
+        <div class="fg"><label>Avans — iznos (€)</label>
+          <input id="m-avans" type="number" value="${d.avans||''}" placeholder="0.00" min="0" step="0.01" oninput="calcAvansPreview()">
+        </div>
+        <div class="fg"><label>Rok avansa</label>
+          <input id="m-avans-rok" type="date" value="${d.avansRok||''}">
+        </div>
+        <div class="fg"><label>Status avansa</label>
+          <select id="m-avans-st">
+            <option value="" ${!d.avansStatus?'selected':''}>— —</option>
+            <option value="neplacen" ${d.avansStatus==='neplacen'?'selected':''}>Nije plaćen</option>
+            <option value="placen" ${d.avansStatus==='placen'?'selected':''}>Plaćen</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="fr">
+        <div class="fg"><label>Način plaćanja</label>
+          <select id="m-nacin-pl">
+            <option value="" ${!d.nacinPlacanja?'selected':''}>— odaberi —</option>
+            <option value="virman" ${d.nacinPlacanja==='virman'?'selected':''}>Virman</option>
+            <option value="gotovina" ${d.nacinPlacanja==='gotovina'?'selected':''}>Gotovina</option>
+            <option value="ček" ${d.nacinPlacanja==='ček'?'selected':''}>Ček</option>
+            <option value="kompenzacija" ${d.nacinPlacanja==='kompenzacija'?'selected':''}>Kompenzacija</option>
+          </select>
+        </div>
+        <div class="fg"><label>Rok plaćanja situacija (dana)</label>
+          <input id="m-rok-pl" type="number" value="${d.rokPlacanjaDana||30}" min="1" placeholder="30">
+        </div>
+      </div>
+      <div class="pdv-info" id="m-avans-preview" style="margin-bottom:9px">${d.ugoCenaIzv&&d.avans?`Avans: ${fmt(d.avans)} € = ${d.ugoCenaIzv>0?Math.round(d.avans/d.ugoCenaIzv*100):0}% od ugovorene cene`:'Unesi ugovorenu cenu i avans za prikaz %'}</div>
+
+      <div class="divl"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Nadzorni organ</div>
+      <div class="fr">
+        <div class="fg"><label>Ime i prezime</label><input id="m-nadzorni-ime" value="${esc(d.nadzorniIme||'')}" placeholder="Petar Petrović"></div>
+        <div class="fg"><label>Telefon</label><input id="m-nadzorni-tel" value="${esc(d.nadzorniTel||'')}"></div>
+      </div>
+      <div class="fg"><label>Firma nadzornog organa</label><input id="m-nadzorni-firma" value="${esc(d.nadzorniFirma||'')}"></div>
+
+      <div class="divl"></div>
+      <div class="fg"><label>Napomena</label><textarea id="m-nap">${esc(d.napomena||'')}</textarea></div>
       <div class="fg"><label>Ugovor (PDF, opciono)</label>
         <div class="upload-area" onclick="document.getElementById('m-pdf').click()">${d.ugovorNaziv?'📄 '+esc(d.ugovorNaziv):'Klikni za upload PDF ugovora'}</div>
         <input type="file" id="m-pdf" accept=".pdf" style="display:none" onchange="hPdf(this)">
@@ -1665,6 +1739,20 @@ function saveIzv(id){
     telefon:document.getElementById('m-tel').value,
     email:document.getElementById('m-email').value,
     napomena:document.getElementById('m-nap').value,
+    // Angažman
+    katIzv:document.getElementById('m-kat-izv')?.value||'',
+    lamelaIzv:document.getElementById('m-lam-izv')?.value||'Oba',
+    jedCenaIzv:parseFloat(document.getElementById('m-jed-cena')?.value)||null,
+    ugoCenaIzv:parseFloat(document.getElementById('m-ugo-cena')?.value)||null,
+    tipCeneIzv:document.getElementById('m-tip-izv')?.value||'BRUTO',
+    // Avans
+    avans:parseFloat(document.getElementById('m-avans')?.value)||null,
+    avansRok:document.getElementById('m-avans-rok')?.value||'',
+    avansStatus:document.getElementById('m-avans-st')?.value||'',
+    // Plaćanje
+    nacinPlacanja:document.getElementById('m-nacin-pl')?.value||'',
+    rokPlacanjaDana:parseInt(document.getElementById('m-rok-pl')?.value)||30,
+    // Nadzorni
     nadzorniIme:document.getElementById('m-nadzorni-ime')?.value||'',
     nadzorniTel:document.getElementById('m-nadzorni-tel')?.value||'',
     nadzorniFirma:document.getElementById('m-nadzorni-firma')?.value||'',
@@ -1674,6 +1762,18 @@ function saveIzv(id){
   if(!d.naziv.trim()){alert('Unesite naziv firme.');return;}
   if(id){Object.assign(izv.find(i=>i.id===id),d);}else{d.id=nii++;izv.push(d);}
   sv(IK,izv);cM();rIzv();
+}
+
+function calcAvansPreview(){
+  const ugo=parseFloat(document.getElementById('m-ugo-cena')?.value)||0;
+  const av=parseFloat(document.getElementById('m-avans')?.value)||0;
+  const el=document.getElementById('m-avans-preview');
+  if(!el)return;
+  if(!ugo&&!av){el.innerHTML='Unesi ugovorenu cenu i avans za prikaz';return;}
+  const pct=ugo>0?Math.round(av/ugo*100):0;
+  el.innerHTML=av
+    ?`Avans: <strong>${fmt(av)} €</strong>${ugo?` = <strong>${pct}%</strong> od ugovorene cene (${fmt(ugo)} €)`:''}`
+    :`Ugovorena cena: <strong>${fmt(ugo)} €</strong>`;
 }
 
 function delIzv(id, fromModal){
@@ -1833,116 +1933,118 @@ function gDragStart(e,el){
 // ===== UPLATE =====
 function rUplate(){
   const lamFil=document.getElementById('upl-lam')?.value||'sve';
-
-  // Skupi sve izvođače koji se pojavljuju na bar kojoj lameli
-  const izvMap={}; // naziv -> {naziv, ugoA, ugoB, ispostA, ispostB, placA, placB, sitA, sitB, hasA, hasB}
+  const izvMap={};
   stavke.forEach(s=>{
-    const addIzv=(naziv, lobj, lbl)=>{
-      if(!naziv) return;
-      if(!izvMap[naziv]) izvMap[naziv]={naziv,ugoA:0,ugoB:0,ispostA:0,ispostB:0,placA:0,placB:0,sitA:0,sitB:0,hasA:false,hasB:false};
-      const ugo=lobj.ugovorenaUnos?calcBruto(lobj.ugovorenaUnos,lobj.tipCene):(s.predvidjena||0);
-      if(lbl==='A'){izvMap[naziv].ugoA+=ugo;izvMap[naziv].placA+=lobj.placenoB||0;izvMap[naziv].hasA=true;}
-      else{izvMap[naziv].ugoB+=ugo;izvMap[naziv].placB+=lobj.placenoB||0;izvMap[naziv].hasB=true;}
+    const addIzv=(naziv,lobj,lbl)=>{
+      if(!naziv)return;
+      if(!izvMap[naziv])izvMap[naziv]={naziv,ugoA:0,ugoB:0,predA:0,predB:0,ispostA:0,ispostB:0,placA:0,placB:0,avansA:0,avansB:0,sitA:0,sitB:0,hasA:false,hasB:false};
+      const r=izvMap[naziv];
+      const isUgo=s.ugovoreno==='Ugovoreno';
+      const ugo=isUgo?(lobj.ugovorenaUnos?calcBruto(lobj.ugovorenaUnos,lobj.tipCene):(s.predvidjena||0)):0;
+      const pred=s.predvidjena||0;
+      if(lbl==='A'){r.ugoA+=ugo;r.predA+=pred/2;r.placA+=lobj.placenoB||0;r.hasA=true;}
+      else{r.ugoB+=ugo;r.predB+=pred/2;r.placB+=lobj.placenoB||0;r.hasB=true;}
     };
-    if(s.lamelaA.izvodjac) addIzv(s.lamelaA.izvodjac, s.lamelaA, 'A');
-    if(s.lamelaB.izvodjac) addIzv(s.lamelaB.izvodjac, s.lamelaB, 'B');
+    if(s.lamelaA.izvodjac)addIzv(s.lamelaA.izvodjac,s.lamelaA,'A');
+    if(s.lamelaB.izvodjac)addIzv(s.lamelaB.izvodjac,s.lamelaB,'B');
   });
-
-  // Dodaj ispostavljene situacije
+  // Avans iz izv registra
+  izv.forEach(i=>{
+    if(!i.naziv||!izvMap[i.naziv])return;
+    const r=izvMap[i.naziv];const av=i.avans||0;const ll=i.lamelaIzv||'Oba';
+    if(ll==='A'||ll==='Oba')r.avansA+=ll==='Oba'?av/2:av;
+    if(ll==='B'||ll==='Oba')r.avansB+=ll==='Oba'?av/2:av;
+  });
+  // Situacije
   sit.forEach(s=>{
-    if(!s.izvodjac||!izvMap[s.izvodjac]) return;
-    const r=izvMap[s.izvodjac];
-    const iznos=s.iznos||0;
+    if(!s.izvodjac||!izvMap[s.izvodjac])return;
+    const r=izvMap[s.izvodjac];const iznos=s.iznos||0;
     if(s.lamela==='A'){r.ispostA+=iznos;}
     else if(s.lamela==='B'){r.ispostB+=iznos;}
     else{r.ispostA+=iznos/2;r.ispostB+=iznos/2;}
-    if(s.lamela==='A'||s.lamela==='Oba') r.sitA++;
-    if(s.lamela==='B'||s.lamela==='Oba') r.sitB++;
+    if(s.lamela==='A'||s.lamela==='Oba')r.sitA++;
+    if(s.lamela==='B'||s.lamela==='Oba')r.sitB++;
   });
-
-  // Filter po lameli
-  let rows=Object.values(izvMap).sort((a,b)=>{
-    const ta=(a.ugoA+a.ugoB), tb=(b.ugoA+b.ugoB);
-    return tb-ta;
-  });
-  if(lamFil==='A') rows=rows.filter(r=>r.hasA);
-  if(lamFil==='B') rows=rows.filter(r=>r.hasB);
-
-  // Računanje po lameli ili zbirno
+  let rows=Object.values(izvMap).sort((a,b)=>(b.ugoA+b.ugoB+b.predA+b.predB)-(a.ugoA+a.ugoB+a.predA+a.predB));
+  if(lamFil==='A')rows=rows.filter(r=>r.hasA);
+  if(lamFil==='B')rows=rows.filter(r=>r.hasB);
   const getVals=(r)=>{
-    if(lamFil==='A') return{ugo:r.ugoA,ispost:r.ispostA,plac:r.placA,sit:r.sitA,lamStr:'A'};
-    if(lamFil==='B') return{ugo:r.ugoB,ispost:r.ispostB,plac:r.placB,sit:r.sitB,lamStr:'B'};
-    return{ugo:r.ugoA+r.ugoB,ispost:r.ispostA+r.ispostB,plac:r.placA+r.placB,sit:r.sitA+r.sitB,
-           lamStr:r.hasA&&r.hasB?'A+B':r.hasA?'A':'B'};
+    if(lamFil==='A')return{ugo:r.ugoA,pred:r.predA,ispost:r.ispostA,plac:r.placA,avans:r.avansA,sit:r.sitA,lamStr:'A'};
+    if(lamFil==='B')return{ugo:r.ugoB,pred:r.predB,ispost:r.ispostB,plac:r.placB,avans:r.avansB,sit:r.sitB,lamStr:'B'};
+    return{ugo:r.ugoA+r.ugoB,pred:r.predA+r.predB,ispost:r.ispostA+r.ispostB,plac:r.placA+r.placB,avans:r.avansA+r.avansB,sit:r.sitA+r.sitB,lamStr:r.hasA&&r.hasB?'A+B':r.hasA?'A':'B'};
   };
-
-  const body=document.getElementById('upl-body');
-  if(!body) return;
-
+  const body=document.getElementById('upl-body');if(!body)return;
   body.innerHTML=rows.map(r=>{
     const v=getVals(r);
-    const preostalo=Math.max(0,v.ugo-v.plac);
-    const pct=v.ugo>0?Math.min(100,Math.round(v.plac/v.ugo*100)):0;
+    const statBase=v.ugo>0?v.ugo:v.pred;
+    const preostalo=Math.max(0,statBase-v.plac);
+    const pct=statBase>0?Math.min(100,Math.round(v.plac/statBase*100)):0;
     const barCol=pct===100?'var(--lb)':pct>=50?'var(--la)':pct>0?'var(--warn)':'var(--border)';
     const lamBadge=v.lamStr==='A+B'?'b-lab':v.lamStr==='A'?'b-la':'b-lb';
-    // Traga kolona — postoji li neplaćena valuta
     const openValute=sit.filter(s=>s.izvodjac===r.naziv&&s.statusPlacanja!=='placeno'&&s.rokPlacanja).length;
+    const izvData=izv.find(x=>x.naziv===r.naziv);
+    const avansStatus=izvData?.avansStatus||'';
+    const avansBadge=avansStatus==='placen'?'b-paid':v.avans>0?'b-partial':'';
     return`<tr>
       <td style="font-weight:600">${esc(r.naziv)}
         ${openValute?`<br><span style="font-size:9.5px;color:var(--warn)">⏰ ${openValute} otvorenih valuta</span>`:''}
+        ${izvData?.katIzv?`<br><span style="font-size:9px;color:var(--text2)">${esc(izvData.katIzv)}</span>`:''}
       </td>
       <td style="text-align:center"><span class="badge ${lamBadge}">${v.lamStr}</span></td>
-      <td style="text-align:right;font-weight:500;background:var(--bg2)">${fmt(Math.round(v.ugo))} €</td>
+      <td style="text-align:right;background:var(--bg2)">
+        ${v.ugo>0?`<strong>${fmt(Math.round(v.ugo))} €</strong>`:`<span style="color:var(--text2);font-size:10px">—</span><br><span style="font-size:9.5px;color:var(--text2)">pred: ${fmt(Math.round(v.pred))} €</span>`}
+      </td>
+      <td style="text-align:right;background:#FFF5F0">
+        ${v.avans>0?`<strong>${fmt(Math.round(v.avans))} €</strong>${avansBadge?`<br><span class="badge ${avansBadge}" style="font-size:9px">${avansStatus==='placen'?'Plaćen':'Čeka'}</span>`:'`}`:'<span style="color:var(--text2)">—</span>'}
+      </td>
       <td style="text-align:right;background:#FFF8E8;color:var(--warn)">${fmt(Math.round(v.ispost))} €</td>
       <td style="text-align:right;background:var(--fin-pl-light);color:var(--la);font-weight:600">${fmt(Math.round(v.plac))} €</td>
       <td style="text-align:right;background:var(--fin-pr-light);color:${preostalo>0?'var(--fin-pr)':'var(--lb)'};font-weight:600">${fmt(Math.round(preostalo))} €</td>
       <td>
         <div style="display:flex;align-items:center;gap:6px">
-          <div style="flex:1;height:7px;background:#eee;border-radius:4px;overflow:hidden;min-width:60px">
-            <div style="height:100%;width:${pct}%;background:${barCol};border-radius:4px"></div>
-          </div>
-          <span style="font-size:10.5px;font-weight:600;color:${pct===100?'var(--lb)':pct>0?'var(--la)':'var(--text2)'};min-width:30px">${pct}%</span>
+          <div style="flex:1;height:7px;background:#eee;border-radius:4px;overflow:hidden;min-width:55px"><div style="height:100%;width:${pct}%;background:${barCol};border-radius:4px"></div></div>
+          <span style="font-size:10.5px;font-weight:600;color:${pct===100?'var(--lb)':pct>0?'var(--la)':'var(--text2)'};min-width:28px">${pct}%</span>
         </div>
+        ${v.ugo===0&&v.pred>0?`<div style="font-size:9px;color:var(--text2);margin-top:1px">* predviđena</div>`:''}
       </td>
       <td style="text-align:center;color:var(--text2);font-size:11px">${v.sit}</td>
-      <td>
-        <button class="btn btn-s" style="font-size:10px;padding:2px 7px;white-space:nowrap" onclick="oIzvDetail(${izv.find(x=>x.naziv===r.naziv)?.id||0})">Detalji</button>
-      </td>
+      <td><button class="btn btn-s" style="font-size:10px;padding:2px 7px;white-space:nowrap" onclick="oIzvDetail(${izvData?.id||0})">Detalji</button></td>
     </tr>`;
-  }).join('')||'<tr><td colspan="9" style="text-align:center;padding:16px;color:var(--text2)">Nema ugovorenih izvođača</td></tr>';
-
-  // Tfoot suma
+  }).join('')||'<tr><td colspan="10" style="text-align:center;padding:16px;color:var(--text2)">Nema izvođača</td></tr>';
   const foot=document.getElementById('upl-foot');
   if(foot&&rows.length){
-    const totUgo=rows.reduce((a,r)=>{const v=getVals(r);return a+v.ugo;},0);
-    const totIspost=rows.reduce((a,r)=>{const v=getVals(r);return a+v.ispost;},0);
-    const totPlac=rows.reduce((a,r)=>{const v=getVals(r);return a+v.plac;},0);
-    const totPr=rows.reduce((a,r)=>{const v=getVals(r);return a+Math.max(0,getVals(r).ugo-getVals(r).plac);},0);
-    const totPct=totUgo>0?Math.min(100,Math.round(totPlac/totUgo*100)):0;
-    foot.innerHTML=`<tr style="font-weight:700;font-size:12px;background:var(--bg2)">
-      <td colspan="2" style="padding:7px">UKUPNO (${rows.length} izvođača)</td>
-      <td style="text-align:right;padding:7px;background:var(--bg2)">${fmt(Math.round(totUgo))} €</td>
-      <td style="text-align:right;padding:7px;background:#FFF0CC;color:var(--warn)">${fmt(Math.round(totIspost))} €</td>
-      <td style="text-align:right;padding:7px;background:var(--fin-pl-light);color:var(--la)">${fmt(Math.round(totPlac))} €</td>
-      <td style="text-align:right;padding:7px;background:var(--fin-pr-light);color:var(--fin-pr)">${fmt(Math.round(totPr))} €</td>
-      <td colspan="3" style="padding:7px;font-size:11px;color:var(--text2)">${totPct}% izmireno od ugovorenog</td>
-    </tr>`;
-  }
-
-  // Metrics
-  const metrics=document.getElementById('upl-metrics');
-  if(metrics&&rows.length){
     const totUgo=rows.reduce((a,r)=>a+getVals(r).ugo,0);
+    const totPred=rows.reduce((a,r)=>a+(getVals(r).ugo===0?getVals(r).pred:0),0);
+    const totAvans=rows.reduce((a,r)=>a+getVals(r).avans,0);
     const totIspost=rows.reduce((a,r)=>a+getVals(r).ispost,0);
     const totPlac=rows.reduce((a,r)=>a+getVals(r).plac,0);
-    const totPr=rows.reduce((a,r)=>a+Math.max(0,getVals(r).ugo-getVals(r).plac),0);
+    const totPr=rows.reduce((a,r)=>{const v=getVals(r);return a+Math.max(0,(v.ugo>0?v.ugo:v.pred)-v.plac);},0);
+    foot.innerHTML=`<tr style="font-weight:700;font-size:12px;background:var(--bg2)">
+      <td colspan="2" style="padding:7px">UKUPNO (${rows.length} izvođača)</td>
+      <td style="text-align:right;padding:7px">${fmt(Math.round(totUgo))} €${totPred>0?`<br><span style="font-size:9px;font-weight:400;color:var(--text2)">+${fmt(Math.round(totPred))} € predv.</span>`:''}</td>
+      <td style="text-align:right;padding:7px;background:#FFF5F0;color:var(--warn)">${totAvans>0?fmt(Math.round(totAvans))+' €':'—'}</td>
+      <td style="text-align:right;padding:7px;color:var(--warn)">${fmt(Math.round(totIspost))} €</td>
+      <td style="text-align:right;padding:7px;color:var(--la)">${fmt(Math.round(totPlac))} €</td>
+      <td style="text-align:right;padding:7px;color:var(--fin-pr)">${fmt(Math.round(totPr))} €</td>
+      <td colspan="3" style="padding:7px;font-size:11px;font-weight:400;color:var(--text2)">${rows.reduce((a,r)=>{const v=getVals(r);return a+(v.ugo>0?v.ugo:v.pred);},0)>0?Math.round(totPlac/rows.reduce((a,r)=>{const v=getVals(r);return a+(v.ugo>0?v.ugo:v.pred);},0)*100):0}% izmireno</td>
+    </tr>`;
+  }
+  const metrics=document.getElementById('upl-metrics');
+  if(metrics){
+    const totUgo=rows.reduce((a,r)=>a+getVals(r).ugo,0);
+    const totPred=rows.reduce((a,r)=>a+(getVals(r).ugo===0?getVals(r).pred:0),0);
+    const totAvans=rows.reduce((a,r)=>a+getVals(r).avans,0);
+    const totIspost=rows.reduce((a,r)=>a+getVals(r).ispost,0);
+    const totPlac=rows.reduce((a,r)=>a+getVals(r).plac,0);
+    const totBase=totUgo+totPred;
     metrics.innerHTML=`
-      <div class="mc mc-n"><div class="lbl">Ukupno ugovoreno</div><div class="val">${fmt(Math.round(totUgo))} €</div><div class="sub">${rows.length} izvođača</div></div>
-      <div class="mc" style="border-top-color:var(--warn)"><div class="lbl">Ispostavljene situacije</div><div class="val" style="color:var(--warn)">${fmt(Math.round(totIspost))} €</div><div class="sub">${sit.length} situacija ukupno</div></div>
-      <div class="mc mc-a"><div class="lbl">Plaćeno</div><div class="val" style="color:var(--la)">${fmt(Math.round(totPlac))} €</div><div class="sub">${totUgo>0?Math.round(totPlac/totUgo*100):0}% od ugovorenog</div></div>
-      <div class="mc mc-w"><div class="lbl">Preostalo za plaćanje</div><div class="val" style="color:var(--fin-pr)">${fmt(Math.round(totPr))} €</div></div>`;
+      <div class="mc mc-n"><div class="lbl">Ugovoreno${totPred>0?' / Predviđeno':''}</div><div class="val">${fmt(Math.round(totUgo))} €</div><div class="sub">${totPred>0?`+${fmt(Math.round(totPred))} € predv. · ${rows.length} izv.`:`${rows.length} izvođača`}</div></div>
+      <div class="mc" style="border-top-color:#FFB300"><div class="lbl">Avansi</div><div class="val" style="color:#E65100">${fmt(Math.round(totAvans))} €</div><div class="sub">ugovoreno avansno</div></div>
+      <div class="mc mc-a"><div class="lbl">Plaćeno</div><div class="val" style="color:var(--la)">${fmt(Math.round(totPlac))} €</div><div class="sub">${totBase>0?Math.round(totPlac/totBase*100):0}% od baze</div></div>
+      <div class="mc mc-w"><div class="lbl">Preostalo</div><div class="val" style="color:var(--fin-pr)">${fmt(Math.round(Math.max(0,totBase-totPlac)))} €</div><div class="sub">ispostavljeno: ${fmt(Math.round(totIspost))} €</div></div>`;
   }
 }
+
 
 function exportUplatePDF(){
   const lamFil=document.getElementById('upl-lam')?.value||'sve';
