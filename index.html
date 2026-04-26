@@ -760,28 +760,28 @@ function calcPDV(unosVal, tip){
 }
 
 // Prikaz ugovorene cene za dati red (uzima lamelu u obzir)
+// Ugovorena cena: 0 ako nema izvođača (nije ugovoreno), predviđena samo u prikazima koji to eksplicitno traže
 function getUgoB(s){
-  if(lam==='A'){const l=s.lamelaA;return l.ugovorenaUnos?calcBruto(l.ugovorenaUnos,l.tipCene):s.predvidjena||0;}
-  if(lam==='B'){const l=s.lamelaB;return l.ugovorenaUnos?calcBruto(l.ugovorenaUnos,l.tipCene):s.predvidjena||0;}
-  // Sve: zbirno
+  if(lam==='A'){const l=s.lamelaA;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcBruto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
+  if(lam==='B'){const l=s.lamelaB;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcBruto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
   const a=s.lamelaA,b=s.lamelaB;
-  const ua=a.ugovorenaUnos?calcBruto(a.ugovorenaUnos,a.tipCene):s.predvidjena/2||0;
-  const ub=b.ugovorenaUnos?calcBruto(b.ugovorenaUnos,b.tipCene):s.predvidjena/2||0;
+  const ua=a.izvodjac?(a.ugovorenaUnos?calcBruto(a.ugovorenaUnos,a.tipCene):s.predvidjena/2||0):0;
+  const ub=b.izvodjac?(b.ugovorenaUnos?calcBruto(b.ugovorenaUnos,b.tipCene):s.predvidjena/2||0):0;
   return ua+ub;
 }
 function getUgoN(s){
-  if(lam==='A'){const l=s.lamelaA;return l.ugovorenaUnos?calcNeto(l.ugovorenaUnos,l.tipCene):s.predvidjena||0;}
-  if(lam==='B'){const l=s.lamelaB;return l.ugovorenaUnos?calcNeto(l.ugovorenaUnos,l.tipCene):s.predvidjena||0;}
+  if(lam==='A'){const l=s.lamelaA;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcNeto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
+  if(lam==='B'){const l=s.lamelaB;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcNeto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
   const a=s.lamelaA,b=s.lamelaB;
-  const ua=a.ugovorenaUnos?calcNeto(a.ugovorenaUnos,a.tipCene):s.predvidjena/2||0;
-  const ub=b.ugovorenaUnos?calcNeto(b.ugovorenaUnos,b.tipCene):s.predvidjena/2||0;
+  const ua=a.izvodjac?(a.ugovorenaUnos?calcNeto(a.ugovorenaUnos,a.tipCene):s.predvidjena/2||0):0;
+  const ub=b.izvodjac?(b.ugovorenaUnos?calcNeto(b.ugovorenaUnos,b.tipCene):s.predvidjena/2||0):0;
   return ua+ub;
 }
 function getPDV(s){
-  if(lam==='A'){const l=s.lamelaA;return l.ugovorenaUnos?calcPDV(l.ugovorenaUnos,l.tipCene):0;}
-  if(lam==='B'){const l=s.lamelaB;return l.ugovorenaUnos?calcPDV(l.ugovorenaUnos,l.tipCene):0;}
+  if(lam==='A'){const l=s.lamelaA;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcPDV(l.ugovorenaUnos,l.tipCene):0;}
+  if(lam==='B'){const l=s.lamelaB;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcPDV(l.ugovorenaUnos,l.tipCene):0;}
   const a=s.lamelaA,b=s.lamelaB;
-  return (a.ugovorenaUnos?calcPDV(a.ugovorenaUnos,a.tipCene):0)+(b.ugovorenaUnos?calcPDV(b.ugovorenaUnos,b.tipCene):0);
+  return (a.izvodjac&&a.ugovorenaUnos?calcPDV(a.ugovorenaUnos,a.tipCene):0)+(b.izvodjac&&b.ugovorenaUnos?calcPDV(b.ugovorenaUnos,b.tipCene):0);
 }
 function getPl(s){
   if(lam==='A') return s.lamelaA.placenoB||0;
@@ -817,7 +817,7 @@ function getIzvLabel(s){
   if(b) parts.push(`<span style="color:#3B6D11">${esc(b)}</span><span style="font-size:9px;color:#aaa"> B</span>`);
   return parts.join('<br>');
 }
-function fmt(n){return Number(n||0).toLocaleString('sr-Latn-RS')}
+function fmt(n){if(n===null||n===undefined||n==='')return'—';const v=Math.round(Number(n)||0);return v.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.')}
 function fd(d){if(!d)return'—';const p=d.split('-');return p[2]+'.'+p[1]+'.'+p[0]}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
@@ -1237,9 +1237,9 @@ function oM(type,id){
       <div style="font-size:11px;font-weight:700;color:var(--la);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">📋 Detalji angažmana</div>
 
       <div class="fr">
-        <div class="fg"><label>Vrsta radova / opis</label>
-          <select id="m-kat-izv">
-            <option value="">— odaberi —</option>
+        <div class="fg"><label>Kategorija radova</label>
+          <select id="m-kat-izv" onchange="filterOpisRadova()">
+            <option value="">— odaberi kategoriju —</option>
             ${kats.map(k=>`<option ${k===(d.katIzv||'')?'selected':''}>${k}</option>`).join('')}
           </select>
         </div>
@@ -1250,6 +1250,12 @@ function oM(type,id){
             <option value="B" ${d.lamelaIzv==='B'?'selected':''}>Lamela B</option>
           </select>
         </div>
+      </div>
+      <div class="fg"><label>Opis radova (stavka iz predmera)</label>
+        <select id="m-opis-izv">
+          <option value="">— prvo odaberi kategoriju —</option>
+          ${stavke.filter(s=>!d.katIzv||s.kat===d.katIzv).map(s=>`<option value="${s.id}" ${s.id===(d.opisIzvId||0)?'selected':''}>${s.id}. ${esc(s.naziv)}</option>`).join('')}
+        </select>
       </div>
 
       <div class="fr3">
@@ -1741,6 +1747,8 @@ function saveIzv(id){
     napomena:document.getElementById('m-nap').value,
     // Angažman
     katIzv:document.getElementById('m-kat-izv')?.value||'',
+    opisIzvId:parseInt(document.getElementById('m-opis-izv')?.value)||null,
+    opisIzv:(()=>{const sel=document.getElementById('m-opis-izv');return sel?.options[sel.selectedIndex]?.text||''})(),
     lamelaIzv:document.getElementById('m-lam-izv')?.value||'Oba',
     jedCenaIzv:parseFloat(document.getElementById('m-jed-cena')?.value)||null,
     ugoCenaIzv:parseFloat(document.getElementById('m-ugo-cena')?.value)||null,
@@ -2113,6 +2121,17 @@ function exportUplatePDF(){
   if(w){w.document.write(html);w.document.close();setTimeout(()=>{w.focus();w.print();},500);}
   else alert('Dozvoli pop-up za PDF.');
 }
+// ===== FILTER OPIS RADOVA =====
+function filterOpisRadova(){
+  const kat=document.getElementById('m-kat-izv')?.value||'';
+  const sel=document.getElementById('m-opis-izv');
+  if(!sel)return;
+  const cur=parseInt(sel.value)||0;
+  const filtered=kat?stavke.filter(s=>s.kat===kat):stavke;
+  sel.innerHTML='<option value="">— odaberi opis radova —</option>'
+    +filtered.map(s=>`<option value="${s.id}" ${s.id===cur?'selected':''}>${s.id}. ${esc(s.naziv)}</option>`).join('');
+}
+
 function openSidebar(){
   document.getElementById('sidebar').classList.add('open');
   document.getElementById('sov').classList.add('open');
