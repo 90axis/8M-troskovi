@@ -594,9 +594,6 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
         </div>
       </div>
       <div id="upl-debug" style="display:none"></div>
-      <div id="upl-metrics-test" style="padding:8px;background:#e8f5e9;border:1px solid #4caf50;border-radius:4px;margin-bottom:8px;font-size:12px;font-weight:600;color:#1b5e20">
-        HTML OK - JS se inicijalizuje...
-      </div>
       <div id="upl-metrics" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"></div>
       <div style="border:1px solid #e8e5de;border-radius:8px;overflow:hidden;background:#fff">
         <div style="overflow-x:auto">
@@ -786,7 +783,11 @@ function calcPDV(unosVal, tip){
 function getUgoB(s){
   if(lam==='A'){const l=s.lamelaA;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcBruto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
   if(lam==='B'){const l=s.lamelaB;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcBruto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
+  // Sve: ako isti izvođač na obje lamele sa istim iznosom — koristi samo jednom
   const a=s.lamelaA,b=s.lamelaB;
+  if(a.izvodjac&&b.izvodjac&&a.izvodjac===b.izvodjac&&a.ugovorenaUnos===b.ugovorenaUnos){
+    return a.ugovorenaUnos?calcBruto(a.ugovorenaUnos,a.tipCene):(s.predvidjena||0);
+  }
   const ua=a.izvodjac?(a.ugovorenaUnos?calcBruto(a.ugovorenaUnos,a.tipCene):s.predvidjena/2||0):0;
   const ub=b.izvodjac?(b.ugovorenaUnos?calcBruto(b.ugovorenaUnos,b.tipCene):s.predvidjena/2||0):0;
   return ua+ub;
@@ -795,6 +796,9 @@ function getUgoN(s){
   if(lam==='A'){const l=s.lamelaA;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcNeto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
   if(lam==='B'){const l=s.lamelaB;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcNeto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
   const a=s.lamelaA,b=s.lamelaB;
+  if(a.izvodjac&&b.izvodjac&&a.izvodjac===b.izvodjac&&a.ugovorenaUnos===b.ugovorenaUnos){
+    return a.ugovorenaUnos?calcNeto(a.ugovorenaUnos,a.tipCene):(s.predvidjena||0);
+  }
   const ua=a.izvodjac?(a.ugovorenaUnos?calcNeto(a.ugovorenaUnos,a.tipCene):s.predvidjena/2||0):0;
   const ub=b.izvodjac?(b.ugovorenaUnos?calcNeto(b.ugovorenaUnos,b.tipCene):s.predvidjena/2||0):0;
   return ua+ub;
@@ -803,6 +807,9 @@ function getPDV(s){
   if(lam==='A'){const l=s.lamelaA;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcPDV(l.ugovorenaUnos,l.tipCene):0;}
   if(lam==='B'){const l=s.lamelaB;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcPDV(l.ugovorenaUnos,l.tipCene):0;}
   const a=s.lamelaA,b=s.lamelaB;
+  if(a.izvodjac&&b.izvodjac&&a.izvodjac===b.izvodjac&&a.ugovorenaUnos===b.ugovorenaUnos){
+    return a.ugovorenaUnos?calcPDV(a.ugovorenaUnos,a.tipCene):0;
+  }
   return (a.izvodjac&&a.ugovorenaUnos?calcPDV(a.ugovorenaUnos,a.tipCene):0)+(b.izvodjac&&b.ugovorenaUnos?calcPDV(b.ugovorenaUnos,b.tipCene):0);
 }
 function getPl(s){
