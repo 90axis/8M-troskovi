@@ -2449,13 +2449,14 @@ function rKalk(){
   elSet('km-pm2', fmt(pm2)+' €/m²');
 
   const box=document.getElementById('k-margina-box');
-  if(box){
+  const margiEl=document.getElementById('km-margina');
+  if(box&&margiEl){
     if(margina>=0){
       box.style.background='var(--lb-light)';box.style.borderColor='var(--lb-border)';
-      box.querySelector('#km-margina').style.color='var(--lb)';
+      margiEl.style.color='var(--lb)';
     } else {
       box.style.background='#FFEBEE';box.style.borderColor='#FFCDD2';
-      box.querySelector('#km-margina').style.color='var(--danger)';
+      margiEl.style.color='var(--danger)';
     }
   }
   rKalkSit();
