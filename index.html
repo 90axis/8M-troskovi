@@ -332,7 +332,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="uplate" onclick="nav('uplate')"><span class="ni-icon">💳</span>Uplate</div>
     <div class="ni" data-page="kalkulator" onclick="nav('kalkulator')"><span class="ni-icon">📊</span>Kalkulator</div>
   </div>
-  <div class="sver">v10.0 — Dacić Prom d.o.o.</div>
+  <div class="sver">v10.1 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -2058,7 +2058,7 @@ function rUplate(){
     html+='<td style="padding:9px 8px;text-align:center;color:#888">'+v.sit+'</td>';
     html+='<td style="padding:9px 8px">';
     var ivRec=izv.find(function(x){return x.naziv===v.naziv;});
-    html+='<button onclick="oIzvDetail('+(ivRec?ivRec.id:0)+')" style="font-size:11px;padding:3px 8px;border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#fff">Detalji</button>';
+    html+='<button onclick="oIzvDetailByName(\''+v.naziv.replace(/'/g,"\\'")+'\')" style="font-size:11px;padding:3px 8px;border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#fff">Detalji</button>';
     html+='</td></tr>';
   }
   body.innerHTML=html;
@@ -2192,6 +2192,53 @@ document.addEventListener('touchend',e=>{
 },{passive:true});
 
 // ===== IZVOĐAČ DETALJI =====
+function oIzvDetailByName(naziv){
+  const i=izv.find(x=>x.naziv===naziv);
+  if(i){oIzvDetail(i.id);return;}
+  const ow=document.getElementById('mwrap'),mc=document.getElementById('mcont');
+  const stavkeIzv=stavke.filter(s=>s.lamelaA.izvodjac===naziv||s.lamelaB.izvodjac===naziv);
+  const sitI=sit.filter(s=>s.izvodjac===naziv);
+  const ugoTot=stavkeIzv.reduce((a,s)=>{
+    const la=s.lamelaA;
+    if(la.izvodjac===naziv&&la.ugovorenaUnos) return a+calcBruto(la.ugovorenaUnos,la.tipCene);
+    return a+(s.predvidjena||0);
+  },0);
+  const placTot=stavkeIzv.reduce((a,s)=>a+(s.lamelaA.placenoB||0),0);
+  const isplTot=sitI.reduce((a,s)=>a+(s.iznos||0),0);
+  const stavkeRows=stavkeIzv.map(s=>{
+    const la=s.lamelaA;
+    const ugo=la.ugovorenaUnos?calcBruto(la.ugovorenaUnos,la.tipCene):(s.predvidjena||0);
+    return`<tr style="font-size:11px"><td>${s.id}</td><td style="font-weight:500">${esc(s.naziv)}</td>
+      <td style="text-align:right">${fmt(Math.round(ugo))} €</td>
+      <td><span class="badge ${la.status==="Završeno"?"b-done":la.status==="U toku"?"b-act":"b-todo"}">${la.status}</span></td></tr>`;
+  }).join('');
+  const sitRows=sitI.length?sitI.map(s=>{
+    const st=stavke.find(x=>x.id===s.stavkaId);
+    return`<div class="sit-tl-item"><div class="sit-tl-dot" style="background:var(--la)"></div>
+      <div class="sit-tl-info"><div class="sit-tl-title">${st?esc(st.naziv):"—"}</div>
+      <div class="sit-tl-meta">${fd(s.datum)} · ${fmt(s.iznos)} €</div></div></div>`;
+  }).join(''):'<div style="padding:10px;color:var(--text2);font-size:12px">Nema situacija</div>';
+  mc.innerHTML=`
+    <div style="background:linear-gradient(135deg,var(--la),var(--la-mid));color:#fff;margin:-20px -20px 16px;padding:18px 20px;border-radius:10px 10px 0 0">
+      <div style="font-size:16px;font-weight:700">${esc(naziv)}</div>
+      <div style="font-size:11px;opacity:.8;margin-top:3px">Izvođač iz predmera</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div class="izv-stat-item"><div class="sv" style="color:var(--la)">${fmt(Math.round(ugoTot))} €</div><div class="sl">Ugovoreno</div></div>
+      <div class="izv-stat-item"><div class="sv" style="color:var(--lb)">${fmt(Math.round(isplTot))} €</div><div class="sl">Isplaćeno (${sitI.length} sit.)</div></div>
+      <div class="izv-stat-item"><div class="sv" style="color:var(--fin-pr)">${fmt(Math.round(Math.max(0,ugoTot-placTot)))} €</div><div class="sl">Preostalo</div></div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:7px">Stavke (${stavkeIzv.length})</div>
+    <div style="overflow-x:auto;margin-bottom:14px"><table style="width:100%;font-size:11px;border-collapse:collapse">
+      <thead><tr style="background:var(--bg2)"><th style="padding:4px 7px">R.br.</th><th style="padding:4px 7px">Opis</th><th style="padding:4px 7px;text-align:right">Ugovoreno</th><th style="padding:4px 7px">Status</th></tr></thead>
+      <tbody>${stavkeRows}</tbody>
+    </table></div>
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:7px">Situacije (${sitI.length})</div>
+    <div class="sit-timeline">${sitRows}</div>
+    <div class="mf"><button class="btn btn-s" onclick="cM()">Zatvori</button></div>`;
+  ow.classList.add('open');
+}
+
 function oIzvDetail(iid){
   const i=izv.find(x=>x.id===iid);if(!i)return;
   const ow=document.getElementById('mwrap'),mc=document.getElementById('mcont');
