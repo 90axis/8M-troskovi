@@ -589,6 +589,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
         </div>
       </div>
 
+      <div id="upl-debug" style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:11px;font-family:monospace"></div>
       <div id="upl-metrics" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"></div>
 
       <div class="tbox">
@@ -1963,6 +1964,7 @@ function gDragStart(e,el){
 // ===== UPLATE =====
 function rUplate(){
   const lamFil=(document.getElementById('upl-lam')||{value:'sve'}).value||'sve';
+  const dbg=document.getElementById('upl-debug');
   const izvMap={};
 
   stavke.forEach(function(s){
@@ -2013,6 +2015,11 @@ function rUplate(){
   }
 
   var body=document.getElementById('upl-body');
+  if(dbg){
+    var izvWithA=stavke.filter(function(s){return s.lamelaA&&s.lamelaA.izvodjac;}).length;
+    var izvWithB=stavke.filter(function(s){return s.lamelaB&&s.lamelaB.izvodjac;}).length;
+    dbg.innerHTML='DEBUG: stavke='+stavke.length+' | izv_u_A='+izvWithA+' | izv_u_B='+izvWithB+' | izvMap_keys='+Object.keys(izvMap).length+' | rows='+rows.length+' | lamFil='+lamFil+' | body='+!!body;
+  }
   if(!body){setTimeout(rUplate,200);return;}
 
   if(!rows.length){
