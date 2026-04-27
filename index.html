@@ -562,14 +562,15 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
                 <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px">
                   <span>Margina %</span><span id="km-posto" style="font-weight:600">—</span>
                 </div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:2px">
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px">
                   <span>Prihod po m² (stanovi)</span><span id="km-pm2">—</span>
                 </div>
+                <div style="margin-top:8px;padding:7px 10px;background:rgba(255,255,255,.5);border-radius:5px;font-size:11px;color:inherit" id="km-pdv-refund"></div>
               </div>
             </div>
 
             <div style="margin-top:12px;padding:10px;background:var(--bg2);border-radius:6px;font-size:11px;color:var(--text2)">
-              💡 Kalkulacija koristi ugovorenu cenu gde postoji, predviđenu gde ne. Margina ne uključuje PDV koji se može refundovati.
+              💡 Kalkulacija koristi ugovorenu cenu gde postoji, predviđenu gde ne. Margina prikazuje i iznos PDV-a koji se može refundovati.
             </div>
           </div>
         </div>
@@ -815,7 +816,12 @@ function getPDV(s){
 function getPl(s){
   if(lam==='A') return s.lamelaA.placenoB||0;
   if(lam==='B') return s.lamelaB.placenoB||0;
-  return (s.lamelaA.placenoB||0)+(s.lamelaB.placenoB||0);
+  // Ako isti izvođač na obje lamele — plaćeno je samo jednom evidentirano
+  const a=s.lamelaA, b=s.lamelaB;
+  if(a.izvodjac&&b.izvodjac&&a.izvodjac===b.izvodjac&&a.placenoB===b.placenoB&&b.placenoB>0){
+    return a.placenoB||0; // ne sabiri, ista uplata
+  }
+  return (a.placenoB||0)+(b.placenoB||0);
 }
 function getStatus(s){
   if(lam==='A') return s.lamelaA.status||'Nije počelo';
@@ -1997,11 +2003,15 @@ function rUplate(){
     // lamelaA
     var laIzv=s.lamelaA&&s.lamelaA.izvodjac?s.lamelaA.izvodjac:'';
     if(laIzv){
+      var plA=s.lamelaA.placenoB||0;
+      var plB=s.lamelaB.placenoB||0;
+      // Ako isti izvođač sa istom vrednošću na oba — ne dupliramo plaćeno
+      var plTotal=(laIzv&&s.lamelaB.izvodjac&&laIzv===s.lamelaB.izvodjac&&plA===plB&&plB>0)?plA:(plA+plB);
       if(!map[laIzv])map[laIzv]={naziv:laIzv,ugo:0,pred:0,plac:0,avans:0,ispost:0,sit:0};
       var laUgo=s.lamelaA.ugovorenaUnos?calcBruto(s.lamelaA.ugovorenaUnos,s.lamelaA.tipCene):0;
       map[laIzv].ugo+=laUgo>0?laUgo:0;
       map[laIzv].pred+=laUgo>0?0:pred;
-      map[laIzv].plac+=s.lamelaA.placenoB||0;
+      map[laIzv].plac+=plTotal;
     }
   }
   // situacije
@@ -2427,12 +2437,30 @@ function rKalk(){
   elSet('km-troskovi', fmt(Math.round(tTot))+' €');
   elSet('km-prihodi', fmt(Math.round(pTot))+' €');
 
+  // PDV koji se može refundirati (PDV sadržan u troškovima koji se vraća)
+  const tPDVrefund=stavke.reduce((a,s)=>{
+    const la=s.lamelaA,lb=s.lamelaB;
+    const hasA=!!la.izvodjac,hasB=!!lb.izvodjac;
+    if(!hasA&&!hasB)return a;
+    if(hasA&&hasB&&la.izvodjac===lb.izvodjac&&la.ugovorenaUnos===lb.ugovorenaUnos)
+      return a+(la.ugovorenaUnos&&la.tipCene==='BRUTO'?Math.round(la.ugovorenaUnos/1.2*0.2*100)/100:0);
+    const pdvA=hasA&&la.ugovorenaUnos&&la.tipCene==='BRUTO'?Math.round(la.ugovorenaUnos/1.2*0.2*100)/100:0;
+    const pdvB=hasB&&lb.ugovorenaUnos&&lb.tipCene==='BRUTO'?Math.round(lb.ugovorenaUnos/1.2*0.2*100)/100:0;
+    return a+pdvA+pdvB;
+  },0);
+
   const margina=pTot-tTot;
+  const marginaSaPDV=margina+tPDVrefund;
   const posto=tTot?Math.round(margina/tTot*100):0;
+  const postoSaPDV=tTot?Math.round(marginaSaPDV/tTot*100):0;
   const pm2=stanM2?Math.round(margina/stanM2):0;
-  elSet('km-margina', (margina>=0?'+ ':'- ')+fmt(Math.abs(margina))+' €');
-  elSet('km-posto', posto+'%');
+  elSet('km-margina', (margina>=0?'+ ':'- ')+fmt(Math.abs(Math.round(margina)))+' €');
+  elSet('km-posto', posto+'%  ('+postoSaPDV+'% sa PDV refundacijom)');
   elSet('km-pm2', fmt(pm2)+' €/m²');
+
+  // Show PDV refund line
+  const pdvEl=document.getElementById('km-pdv-refund');
+  if(pdvEl) pdvEl.textContent='+ '+fmt(Math.round(tPDVrefund))+' € PDV refundacija → neto margina: '+(marginaSaPDV>=0?'+ ':'- ')+fmt(Math.abs(Math.round(marginaSaPDV)))+' €';
 
   const box=document.getElementById('k-margina-box');
   const margiEl=document.getElementById('km-margina');
