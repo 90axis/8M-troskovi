@@ -848,24 +848,25 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function nav(pg){
   document.querySelectorAll('.ni').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
-  document.querySelector('.ni[data-page="'+pg+'"]').classList.add('active');
-  document.getElementById('page-'+pg).classList.add('active');
-  const nm={home:'Home',predmer:'Predmer',izvodjaci:'Izvođači',gantt:'Gantt',situacije:'Situacije',kasnjenja:'⚠ Kašnjenja',uplate:'💳 Uplate',kalkulator:'Kalkulator isplativosti'};
-  document.getElementById('ptitle').textContent=nm[pg]||pg;
+  var niEl=document.querySelector('.ni[data-page="'+pg+'"]');
+  var pgEl=document.getElementById('page-'+pg);
+  if(niEl) niEl.classList.add('active');
+  if(pgEl) pgEl.classList.add('active');
+  var nm={home:'Home',predmer:'Predmer',izvodjaci:'Izvođači',gantt:'Gantt',situacije:'Situacije',kasnjenja:'⚠ Kašnjenja',uplate:'💳 Uplate',kalkulator:'Kalkulator isplativosti'};
+  var ptEl=document.getElementById('ptitle');
+  if(ptEl) ptEl.textContent=nm[pg]||pg;
   if(pg==='uplate'){
     var dbg=document.getElementById('upl-debug');
-    if(dbg) dbg.innerHTML='nav() pozvan, stavke='+stavke.length+', pokušavam rUplate...';
+    if(dbg) dbg.innerHTML='Učitavam...';
     try{
       rUplate();
-      if(dbg) dbg.innerHTML+=' | rUplate() završen, rows u body='+((document.getElementById('upl-body').innerHTML.match(/<tr/g)||[]).length);
     }catch(e){
-      if(dbg) dbg.innerHTML+=' | GREŠKA: '+e.message;
-      alert('rUplate greška: '+e.message+'\n'+e.stack);
+      if(dbg) dbg.innerHTML='GREŠKA u rUplate: '+e.message;
     }
   }
-  if(pg==='kalkulator') rKalk();
-  if(pg==='kasnjenja') rKasnjenja();
-  if(pg==='gantt') rGantt();
+  if(pg==='kalkulator') try{rKalk();}catch(e){}
+  if(pg==='kasnjenja') try{rKasnjenja();}catch(e){}
+  if(pg==='gantt') try{rGantt();}catch(e){}
 }
 
 // ===== HOME =====
@@ -2538,7 +2539,15 @@ function exportKasPDF(){
 }
 
 // ===== RENDER ALL =====
-function rAll(){rHome();rStavke();rSit();rIzv();rGantt();rKasnjenja();rKalk();rValute();rUplate();}
+function rAll(){
+  try{rHome();}catch(e){console.error('rHome',e);}
+  try{rStavke();}catch(e){console.error('rStavke',e);}
+  try{rSit();}catch(e){console.error('rSit',e);}
+  try{rIzv();}catch(e){console.error('rIzv',e);}
+  try{rKasnjenja();}catch(e){console.error('rKasnjenja',e);}
+  try{rKalk();}catch(e){console.error('rKalk',e);}
+  try{rValute();}catch(e){console.error('rValute',e);}
+}
 
 // ===== EVENTS =====
 document.querySelector('.sidebar').addEventListener('click',e=>{
