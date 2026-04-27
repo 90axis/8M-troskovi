@@ -332,7 +332,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="uplate" onclick="nav('uplate')"><span class="ni-icon">💳</span>Uplate</div>
     <div class="ni" data-page="kalkulator" onclick="nav('kalkulator')"><span class="ni-icon">📊</span>Kalkulator</div>
   </div>
-  <div class="sver">v10.1 — Dacić Prom d.o.o.</div>
+  <div class="sver">v10.2 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -906,7 +906,7 @@ function rHome(){
   const pfCls=lam==='A'?'pf-a':lam==='B'?'pf-b':'pf-ab';
   document.getElementById('c-grid').innerHTML=Object.entries(cats).sort((a,b)=>b[1].b-a[1].b).map(([k,v])=>{
     const p=v.b?Math.round(v.pl/v.b*100):0;
-    return`<div class="cc"><div class="cn">${k}</div><div class="cv"><span class="ct">${fmt(v.b)} €</span><span class="cp2">${fmt(v.pl)} € plaćeno</span></div><div class="pb"><div class="${pfCls}" style="width:${p}%"></div></div></div>`;
+    return`<div class="cc" style="cursor:pointer" onclick="oKatModal('${k.replace(/'/g,"\\'")}')"><div class="cn">${k}</div><div class="cv"><span class="ct">${fmt(v.b)} €</span><span class="cp2">${fmt(v.pl)} € plaćeno</span></div><div class="pb"><div class="${pfCls}" style="width:${p}%"></div></div></div>`;
   }).join('');
 
   // Charts
@@ -926,12 +926,12 @@ function rHome(){
     if(c1&&typeof Chart!=='undefined'){
       if(_chartUplate){_chartUplate.destroy();_chartUplate=null;}
       _chartUplate=new Chart(c1,{type:'bar',data:{
-        labels:top8.map(x=>x[0].length>12?x[0].slice(0,12)+'…':x[0]),
+        labels:top8.map(x=>x[0].length>14?x[0].slice(0,14)+'…':x[0]),
         datasets:[
           {label:'Plaćeno',data:top8.map(x=>Math.round(x[1].pl)),backgroundColor:'#1558A0cc'},
           {label:'Preostalo',data:top8.map(x=>Math.round(x[1].pr)),backgroundColor:'#C84B00cc'}
         ]
-      },options:{responsive:true,plugins:{legend:{position:'top',labels:{font:{size:10}}}},scales:{x:{ticks:{font:{size:9}}},y:{ticks:{callback:v=>fmt(v)+' €',font:{size:9}}}}}});
+      },options:{responsive:true,plugins:{legend:{position:'top',labels:{font:{size:13},padding:12}}},scales:{x:{ticks:{font:{size:10}}},y:{ticks:{callback:v=>fmt(v)+' €',font:{size:10}}}}}});
     }
     // Chart 2: Troškovi po kategoriji (pie)
     const katEntries=Object.entries(cats).sort((a,b)=>b[1].b-a[1].b).slice(0,8);
@@ -942,7 +942,7 @@ function rHome(){
       _chartKat=new Chart(c2,{type:'doughnut',data:{
         labels:katEntries.map(x=>x[0]),
         datasets:[{data:katEntries.map(x=>Math.round(x[1].b)),backgroundColor:katColors}]
-      },options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{size:9},boxWidth:12}}}}});
+      },options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{size:12},padding:10,boxWidth:14}}}}});
     }
   }catch(e){console.warn('Chart error:',e);}
 }
@@ -1112,6 +1112,17 @@ function rSit(){
     </tr>`;
   }).join('') || '<tr><td colspan="11" style="text-align:center;padding:16px;color:var(--text2)">Nema evidentiranih situacija / računa</td></tr>';
 }
+function hSitPdfEdit(inp,sid){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const s=sit.find(x=>x.id===sid);
+    if(s){s.pdfNaziv=f.name;s.pdfData=e.target.result;}
+    const el=document.getElementById('m-sit-pds-edit');
+    if(el)el.textContent='Priložen: '+f.name;
+  };
+  r.readAsDataURL(f);
+}
 function editSit(sid){
   const s=sit.find(x=>x.id===sid);if(!s)return;
   const ow=document.getElementById('mwrap'),mc=document.getElementById('mcont');
@@ -1167,6 +1178,11 @@ function editSit(sid){
       <div class="fg"><label>Plaćeno do sada</label><input id="m-pl-iznos" type="number" value="${s.placenoIznos||0}" min="0" step="0.01"></div>
     </div>
     <div class="fg"><label>Broj računa</label><input id="m-br-rac" value="${esc(s.brRacuna||'')}"></div>
+    <div class="fg"><label>📄 PDF dokumentacija (opciono)</label>
+      <div class="upload-area" onclick="document.getElementById('m-sit-pdf-edit').click()">${s.pdfNaziv?'📄 '+esc(s.pdfNaziv):'Klikni za upload PDF'}</div>
+      <input type="file" id="m-sit-pdf-edit" accept=".pdf" style="display:none" onchange="hSitPdfEdit(this,${sid})">
+      <div id="m-sit-pds-edit" style="font-size:11px;color:var(--lb);margin-top:4px">${s.pdfNaziv?'Priložen: '+esc(s.pdfNaziv):''}</div>
+    </div>
     <div class="fg"><label>Napomena</label><textarea id="m-nap">${esc(s.napomena||'')}</textarea></div>
     <div class="mf mf-left">
       <button class="btn btn-del" onclick="delSit(${sid},true)">🗑 Obriši</button>
@@ -2349,6 +2365,78 @@ function filterOpisRadova(){
     +filtered.map(s=>`<option value="${s.id}" ${s.id===cur?'selected':''}>${s.id}. ${esc(s.naziv)}</option>`).join('');
 }
 
+// ===== SYNC DS IZVOĐAČI → IZV REGISTAR =====
+function syncIzvFromDS(){
+  let changed=false;
+  stavke.forEach(s=>{
+    [s.lamelaA,s.lamelaB].forEach(la=>{
+      if(!la.izvodjac)return;
+      const exists=izv.some(i=>i.naziv===la.izvodjac);
+      if(!exists){
+        izv.push({id:nii++,naziv:la.izvodjac,pib:'',mb:'',kontakt:'',telefon:'',email:'',napomena:'',
+          katIzv:'',lamelaIzv:'Oba',jedCenaIzv:null,ugoCenaIzv:null,tipCeneIzv:'BRUTO',
+          avans:null,avansRok:'',avansStatus:'',nacinPlacanja:'',rokPlacanjaDana:30,
+          nadzorniIme:'',nadzorniTel:'',nadzorniFirma:'',ugovorNaziv:'',ugovorPdf:''});
+        changed=true;
+      }
+    });
+  });
+  if(changed){sv(IK,izv);}
+}
+
+// ===== KATEGORIJA MODAL =====
+function oKatModal(kat){
+  const ow=document.getElementById('mwrap'),mc=document.getElementById('mcont');
+  const stavkeKat=stavke.filter(s=>s.kat===kat);
+  const totUgo=stavkeKat.reduce((a,s)=>a+getUgoB(s),0);
+  const totPred=stavkeKat.reduce((a,s)=>a+(s.predvidjena||0),0);
+  const totPl=stavkeKat.reduce((a,s)=>a+getPl(s),0);
+  const base=totUgo||totPred;
+  const totPr=Math.max(0,base-totPl);
+  const pct=base>0?Math.min(100,Math.round(totPl/base*100)):0;
+  const rows=stavkeKat.map(s=>{
+    const ugo=getUgoB(s);const pl=getPl(s);const pr=Math.max(0,(ugo||s.predvidjena||0)-pl);
+    const st=getStatus(s);const izv2=s.lamelaA.izvodjac||s.lamelaB.izvodjac||'—';
+    return`<tr style="font-size:11px">
+      <td style="color:var(--text2);padding:4px 8px">${s.id}</td>
+      <td style="font-weight:500;padding:4px 8px">${esc(s.naziv)}</td>
+      <td style="font-size:10px;color:var(--text2);padding:4px 8px">${esc(izv2)}</td>
+      <td style="text-align:right;padding:4px 8px">${ugo>0?fmt(Math.round(ugo))+' €':'<span style="color:var(--text2)">'+fmt(Math.round(s.predvidjena||0))+' €</span>'}</td>
+      <td style="text-align:right;color:var(--la);padding:4px 8px">${fmt(Math.round(pl))} €</td>
+      <td style="text-align:right;padding:4px 8px;color:${pr>0?'var(--fin-pr)':'var(--lb)'}">${fmt(Math.round(pr))} €</td>
+      <td style="padding:4px 8px"><span class="badge ${st==='Završeno'?'b-done':st==='U toku'?'b-act':'b-todo'}">${st}</span></td>
+    </tr>`;
+  }).join('');
+  mc.innerHTML=`
+    <div style="background:linear-gradient(135deg,var(--la),var(--la-mid));color:#fff;margin:-20px -20px 16px;padding:18px 20px;border-radius:10px 10px 0 0">
+      <div style="font-size:16px;font-weight:700">${esc(kat)}</div>
+      <div style="font-size:11px;opacity:.8;margin-top:2px">${stavkeKat.length} stavki</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+      <div class="izv-stat-item"><div class="sv" style="font-size:15px">${stavkeKat.length}</div><div class="sl">Stavki</div></div>
+      <div class="izv-stat-item"><div class="sv" style="color:var(--la);font-size:13px">${fmt(Math.round(base))} €</div><div class="sl">${totUgo>0?'Ugovoreno':'Predviđeno'}</div></div>
+      <div class="izv-stat-item"><div class="sv" style="color:var(--lb);font-size:13px">${fmt(Math.round(totPl))} €</div><div class="sl">Plaćeno</div></div>
+      <div class="izv-stat-item"><div class="sv" style="color:var(--fin-pr);font-size:13px">${fmt(Math.round(totPr))} €</div><div class="sl">Preostalo</div></div>
+    </div>
+    <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden;margin-bottom:14px">
+      <div style="height:100%;width:${pct}%;background:${pct===100?'var(--lb)':pct>50?'var(--la)':'var(--warn)'};border-radius:4px;transition:width .4s"></div>
+    </div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:var(--bg2);font-size:10px">
+        <th style="padding:5px 8px">#</th>
+        <th style="padding:5px 8px;text-align:left">Opis radova</th>
+        <th style="padding:5px 8px;text-align:left">Izvođač</th>
+        <th style="padding:5px 8px;text-align:right">Ugovoreno</th>
+        <th style="padding:5px 8px;text-align:right">Plaćeno</th>
+        <th style="padding:5px 8px;text-align:right">Preostalo</th>
+        <th style="padding:5px 8px">Status</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div class="mf"><button class="btn btn-s" onclick="cM()">Zatvori</button></div>`;
+  ow.classList.add('open');
+}
+
 function toggleSitExport(){
   const p=document.getElementById('sit-export-panel');
   if(!p)return;
@@ -2849,6 +2937,7 @@ document.getElementById('kd-ostali')?.addEventListener('input',rKalk);
 // kk-izv and kk-lam use inline onchange handlers
 // Init
 document.body.classList.add('lam-sve');
+syncIzvFromDS();
 rAll();
 </script>
 </body>
