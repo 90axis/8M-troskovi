@@ -73,7 +73,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
   #page-kalkulator > div:first-child{grid-template-columns:1fr!important}
 }
 
-/* Valuta card */
+@media(max-width:768px){
+  #home-charts{grid-template-columns:1fr!important}
+  #home-lamela-grid{grid-template-columns:1fr!important}
+  #home-charts canvas{max-height:220px}
+}
 .val-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 14px;border-top:3px solid var(--warn);margin-bottom:16px}
 .val-card .vc-title{font-size:11px;font-weight:700;color:var(--warn);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
 .val-item{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
@@ -334,7 +338,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="dnevnik" onclick="nav('dnevnik')"><span class="ni-icon">📓</span>Dnevnik</div>
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
-  <div class="sver">v10.3 — Dacić Prom d.o.o.</div>
+  <div class="sver">v10.5 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -352,9 +356,9 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="page active" id="page-home">
       <div id="home-alerts"></div>
       <div class="metrics" id="m-grid"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px" id="home-lamela-grid"></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px" id="home-lamela-grid"></div>
       <div id="valute-card"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px" id="home-charts">
+      <div id="home-charts" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
         <div class="tbox" style="padding:14px">
           <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text1)">Plaćeno vs Preostalo (top 8 izvođača)</div>
           <canvas id="chart-uplate" height="200"></canvas>
@@ -1059,22 +1063,24 @@ function rHome(){
     <div class="mc mc-w"><div class="lbl">Preostalo</div><div class="val" style="color:var(--warn)">${fmt(tot-pl)} €</div></div>
     <div class="mc mc-b"><div class="lbl">Završene stavke</div><div class="val" style="color:var(--lb)">${zav} / ${stavke.length}</div></div>`;
 
-  // Lamela status cards
+  // Lamela status cards — rebuild each time (no +=)
   const laGrid=document.getElementById('home-lamela-grid');
   if(laGrid){
-    ['A','B'].forEach(lb=>{
+    let laHtml='';
+    const lamelas=[{lb:'A',col:'var(--la)',bgCol:'var(--la-light)',brdCol:'var(--la-border)'},
+                   {lb:'B',col:'var(--lb)',bgCol:'var(--lb-light)',brdCol:'var(--lb-border)'},
+                   {lb:'AB',col:'var(--lab)',bgCol:'var(--lab-light)',brdCol:'var(--lab-border)'}];
+    lamelas.forEach(({lb,col,bgCol,brdCol})=>{
       const oldLam=lam;
-      lam=lb;
+      lam=lb==='AB'?'sve':lb;
       const ltot=stavke.reduce((a,s)=>a+getUgoB(s),0);
       const lpl=stavke.reduce((a,s)=>a+getPl(s),0);
       const lpct=ltot?Math.round(lpl/ltot*100):0;
       const lzav=stavke.filter(s=>getStatus(s)==='Završeno').length;
       lam=oldLam;
-      const col=lb==='A'?'var(--la)':'var(--lb)';
-      const bgCol=lb==='A'?'var(--la-light)':'var(--lb-light)';
-      const brdCol=lb==='A'?'var(--la-border)':'var(--lb-border)';
-      laGrid.innerHTML=(laGrid.innerHTML||'')+`<div style="background:${bgCol};border:1px solid ${brdCol};border-radius:8px;padding:12px 16px">
-        <div style="font-size:11px;font-weight:700;color:${col};text-transform:uppercase;margin-bottom:8px">Lamela ${lb}</div>
+      const label=lb==='AB'?'A + B':('Lamela '+lb);
+      laHtml+=`<div style="background:${bgCol};border:1px solid ${brdCol};border-radius:8px;padding:12px 16px">
+        <div style="font-size:11px;font-weight:700;color:${col};text-transform:uppercase;margin-bottom:8px">${label}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:11px">
           <div><div style="color:var(--text2)">Ugovoreno</div><div style="font-weight:700;font-size:13px">${fmt(ltot)} €</div></div>
           <div><div style="color:var(--text2)">Plaćeno</div><div style="font-weight:700;font-size:13px;color:${col}">${fmt(lpl)} €</div></div>
@@ -1085,6 +1091,7 @@ function rHome(){
         </div>
       </div>`;
     });
+    laGrid.innerHTML=laHtml;
   }
 
   const cats={};
@@ -1111,12 +1118,12 @@ function rHome(){
     if(c1&&typeof Chart!=='undefined'){
       if(_chartUplate){_chartUplate.destroy();_chartUplate=null;}
       _chartUplate=new Chart(c1,{type:'bar',data:{
-        labels:top8.map(x=>x[0].length>14?x[0].slice(0,14)+'…':x[0]),
+        labels:top8.map(x=>x[0].length>12?x[0].slice(0,12)+'…':x[0]),
         datasets:[
           {label:'Plaćeno',data:top8.map(x=>Math.round(x[1].pl)),backgroundColor:'#1558A0cc'},
           {label:'Preostalo',data:top8.map(x=>Math.round(x[1].pr)),backgroundColor:'#C84B00cc'}
         ]
-      },options:{responsive:true,plugins:{legend:{position:'top',labels:{font:{size:13},padding:12}}},scales:{x:{ticks:{font:{size:10}}},y:{ticks:{callback:v=>fmt(v)+' €',font:{size:10}}}}}});
+      },options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'top',labels:{font:{size:12},padding:10,boxWidth:12}}},scales:{x:{ticks:{font:{size:9},maxRotation:30}},y:{ticks:{callback:v=>fmt(v)+'€',font:{size:9}}}}}});
     }
     const katEntries=Object.entries(cats).sort((a,b)=>b[1].b-a[1].b).slice(0,8);
     const katColors=['#1558A0','#2E7D32','#00796B','#E65100','#6A1B9A','#C62828','#F57F17','#00838F'];
@@ -1124,9 +1131,9 @@ function rHome(){
     if(c2&&typeof Chart!=='undefined'){
       if(_chartKat){_chartKat.destroy();_chartKat=null;}
       _chartKat=new Chart(c2,{type:'doughnut',data:{
-        labels:katEntries.map(x=>x[0]),
+        labels:katEntries.map(x=>x[0].length>18?x[0].slice(0,18)+'…':x[0]),
         datasets:[{data:katEntries.map(x=>Math.round(x[1].b)),backgroundColor:katColors}]
-      },options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{size:12},padding:10,boxWidth:14}}}}});
+      },options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:window.innerWidth<768?'bottom':'right',labels:{font:{size:11},padding:8,boxWidth:12}}}}});
     }
   }catch(e){console.warn('Chart error:',e);}
 }
@@ -1482,7 +1489,7 @@ function rIzv(){
         <div style="width:36px;height:36px;border-radius:50%;background:${hasA&&hasB?'var(--lab-light)':hasA?'var(--la-light)':'var(--lb-light)'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${hasA&&hasB?'var(--lab)':hasA?'var(--la)':'var(--lb)'};flex-shrink:0">${i.naziv.slice(0,2).toUpperCase()}</div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.naziv)}</div>
-          ${i.katIzv?`<div style="font-size:10px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(i.katIzv)}</div>`:''}
+          ${(i.katIzv||stavke.find(s=>s.lamelaA.izvodjac===i.naziv||s.lamelaB.izvodjac===i.naziv)?.kat||'')?`<div style="font-size:10px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(i.katIzv||stavke.find(s=>s.lamelaA.izvodjac===i.naziv||s.lamelaB.izvodjac===i.naziv)?.kat||'')}</div>`:''}
           <div style="margin-top:2px">${lamBadge}</div>
         </div>
       </div>
