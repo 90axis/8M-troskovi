@@ -345,12 +345,14 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
       <button class="tb-btn" data-l="A">Lamela A</button>
       <button class="tb-btn" data-l="B">Lamela B</button>
     </div>
-    <button class="tb-btn" id="btn-excel">↓ Excel</button>
+    <button class="tb-btn" id="btn-excel" title="Export Excel">↓ Excel</button>
     <button class="tb-btn" id="btn-pdf">↓ PDF</button>
   </div>
   <div class="content">
     <div class="page active" id="page-home">
+      <div id="home-alerts"></div>
       <div class="metrics" id="m-grid"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px" id="home-lamela-grid"></div>
       <div id="valute-card"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px" id="home-charts">
         <div class="tbox" style="padding:14px">
@@ -685,6 +687,22 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
             <button class="btn btn-p" onclick="prijava()" style="width:100%;margin-top:4px">Prijavi se</button>
             <div id="login-msg" style="font-size:11px;color:var(--danger);margin-top:6px"></div>
           </div>
+
+          <div class="sec" style="margin-top:14px">Backup i obnova podataka</div>
+          <div class="tbox" style="padding:16px">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.5">
+              Podaci se čuvaju u browser memoriji. Redovno pravite backup da biste zaštitili unesene podatke (izvođači, situacije, uplate).
+            </div>
+            <div style="display:flex;gap:8px;flex-direction:column">
+              <button class="btn btn-p" onclick="exportBackup()" style="width:100%">📥 Izvezi backup (JSON)</button>
+              <label class="btn btn-s" style="width:100%;text-align:center;cursor:pointer;margin:0">
+                📤 Uvezi backup (JSON)
+                <input type="file" accept=".json" style="display:none" onchange="importBackup(this)">
+              </label>
+              <button class="btn btn-s" onclick="if(confirm('Resinkronizovati plaćanja iz situacija?')){resyncAllPlaceno();}" style="width:100%;border-color:var(--lb);color:var(--lb)">🔄 Resinkronizuj plaćanja</button>
+            </div>
+            <div id="backup-msg" style="font-size:11px;margin-top:8px"></div>
+          </div>
         </div>
 
         <!-- Upravljanje korisnicima -->
@@ -995,16 +1013,80 @@ function nav(pg){
 // ===== HOME =====
 let _chartUplate=null, _chartKat=null;
 function rHome(){
+  const today=new Date();today.setHours(0,0,0,0);
   const tot=stavke.reduce((a,s)=>a+getUgoB(s),0);
   const totN=stavke.reduce((a,s)=>a+getUgoN(s),0);
   const pl=stavke.reduce((a,s)=>a+getPl(s),0);
   const pct=tot?Math.round(pl/tot*100):0;
   const zav=stavke.filter(s=>getStatus(s)==='Završeno').length;
+
+  // Last update from dnevnik
+  const lastEntry=dnevnik[0];
+  const lastUpdated=lastEntry?`Poslednje ažurirano: ${new Date(lastEntry.ts).toLocaleDateString('sr-Latn-RS')} ${new Date(lastEntry.ts).toLocaleTimeString('sr-Latn-RS',{hour:'2-digit',minute:'2-digit'})} — ${lastEntry.korisnik}`:'Još nema unosa';
+
+  // Alerts
+  const overdueSit=sit.filter(s=>{
+    if(s.statusPlacanja==='placeno')return false;
+    if(!s.rokPlacanja)return false;
+    const rok=new Date(s.rokPlacanja);rok.setHours(0,0,0,0);
+    return rok<today;
+  });
+  const soonSit=sit.filter(s=>{
+    if(s.statusPlacanja==='placeno')return false;
+    if(!s.rokPlacanja)return false;
+    const rok=new Date(s.rokPlacanja);rok.setHours(0,0,0,0);
+    const diff=Math.round((rok-today)/(1000*60*60*24));
+    return diff>=0&&diff<=7;
+  });
+  const alerts=document.getElementById('home-alerts');
+  if(alerts){
+    let html='';
+    if(overdueSit.length) html+=`<div style="background:#FFEBEE;border:1px solid #FFCDD2;border-radius:7px;padding:10px 14px;margin-bottom:8px;font-size:12px;cursor:pointer" onclick="nav('situacije')">
+      <strong style="color:var(--danger)">⚠ ${overdueSit.length} valuta je prošlo rok plaćanja</strong>
+      <span style="color:var(--text2);margin-left:8px">${overdueSit.map(s=>esc(s.izvodjac||'?')+' ('+fmt(s.iznos)+' €)').slice(0,3).join(', ')}${overdueSit.length>3?'...':''}</span>
+    </div>`;
+    if(soonSit.length) html+=`<div style="background:#FFF3E0;border:1px solid #FFCC80;border-radius:7px;padding:10px 14px;margin-bottom:8px;font-size:12px;cursor:pointer" onclick="nav('situacije')">
+      <strong style="color:var(--warn)">⏰ ${soonSit.length} valuta ističe u narednih 7 dana</strong>
+      <span style="color:var(--text2);margin-left:8px">${soonSit.map(s=>esc(s.izvodjac||'?')).slice(0,3).join(', ')}${soonSit.length>3?'...':''}</span>
+    </div>`;
+    html+=`<div style="font-size:10.5px;color:var(--text2);margin-bottom:10px">${lastUpdated}</div>`;
+    alerts.innerHTML=html;
+  }
+
   document.getElementById('m-grid').innerHTML=`
     <div class="mc mc-n"><div class="lbl">Ukupno BRUTO (ugovoreno)</div><div class="val">${fmt(tot)} €</div><div class="sub">PDV: ${fmt(tot-totN)} €</div></div>
     <div class="mc mc-a"><div class="lbl">Plaćeno BRUTO</div><div class="val" style="color:var(--la)">${fmt(pl)} €</div><div class="sub">${pct}% izvršeno</div></div>
     <div class="mc mc-w"><div class="lbl">Preostalo</div><div class="val" style="color:var(--warn)">${fmt(tot-pl)} €</div></div>
     <div class="mc mc-b"><div class="lbl">Završene stavke</div><div class="val" style="color:var(--lb)">${zav} / ${stavke.length}</div></div>`;
+
+  // Lamela status cards
+  const laGrid=document.getElementById('home-lamela-grid');
+  if(laGrid){
+    ['A','B'].forEach(lb=>{
+      const oldLam=lam;
+      lam=lb;
+      const ltot=stavke.reduce((a,s)=>a+getUgoB(s),0);
+      const lpl=stavke.reduce((a,s)=>a+getPl(s),0);
+      const lpct=ltot?Math.round(lpl/ltot*100):0;
+      const lzav=stavke.filter(s=>getStatus(s)==='Završeno').length;
+      lam=oldLam;
+      const col=lb==='A'?'var(--la)':'var(--lb)';
+      const bgCol=lb==='A'?'var(--la-light)':'var(--lb-light)';
+      const brdCol=lb==='A'?'var(--la-border)':'var(--lb-border)';
+      laGrid.innerHTML=(laGrid.innerHTML||'')+`<div style="background:${bgCol};border:1px solid ${brdCol};border-radius:8px;padding:12px 16px">
+        <div style="font-size:11px;font-weight:700;color:${col};text-transform:uppercase;margin-bottom:8px">Lamela ${lb}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:11px">
+          <div><div style="color:var(--text2)">Ugovoreno</div><div style="font-weight:700;font-size:13px">${fmt(ltot)} €</div></div>
+          <div><div style="color:var(--text2)">Plaćeno</div><div style="font-weight:700;font-size:13px;color:${col}">${fmt(lpl)} €</div></div>
+          <div><div style="color:var(--text2)">Završeno</div><div style="font-weight:700;font-size:13px">${lzav}/${stavke.length} (${lpct}%)</div></div>
+        </div>
+        <div style="margin-top:8px;height:6px;background:${brdCol};border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${lpct}%;background:${col};border-radius:3px"></div>
+        </div>
+      </div>`;
+    });
+  }
+
   const cats={};
   stavke.forEach(s=>{if(!cats[s.kat])cats[s.kat]={b:0,pl:0};cats[s.kat].b+=getUgoB(s)||s.predvidjena||0;cats[s.kat].pl+=getPl(s);});
   const pfCls=lam==='A'?'pf-a':lam==='B'?'pf-b':'pf-ab';
@@ -1015,7 +1097,6 @@ function rHome(){
 
   // Charts
   try{
-    // Chart 1: Plaćeno vs Preostalo po izvođaču (top 8)
     const izvMap={};
     stavke.forEach(s=>{
       const izv2=s.lamelaA.izvodjac||s.lamelaB.izvodjac;if(!izv2)return;
@@ -1037,7 +1118,6 @@ function rHome(){
         ]
       },options:{responsive:true,plugins:{legend:{position:'top',labels:{font:{size:13},padding:12}}},scales:{x:{ticks:{font:{size:10}}},y:{ticks:{callback:v=>fmt(v)+' €',font:{size:10}}}}}});
     }
-    // Chart 2: Troškovi po kategoriji (pie)
     const katEntries=Object.entries(cats).sort((a,b)=>b[1].b-a[1].b).slice(0,8);
     const katColors=['#1558A0','#2E7D32','#00796B','#E65100','#6A1B9A','#C62828','#F57F17','#00838F'];
     const c2=document.getElementById('chart-kat');
@@ -2979,7 +3059,144 @@ function exportKasPDF(){
   else alert('Dozvoli pop-up za PDF.');
 }
 
-// ===== DNEVNIK =====
+// ===== EXPORT EXCEL (MULTI-SHEET) =====
+function exportExcelFull(){
+  if(typeof XLSX==='undefined'){alert('XLSX nije učitan.');return;}
+  const wb=XLSX.utils.book_new();
+
+  // Sheet 1: Predmer
+  const predRows=[['R.br.','Naziv','Kategorija','Jed.mere','Kolicina','Jed.cena','Predvidjena','Izvodjac','Ugovorena','Placeno','Preostalo','Status']];
+  stavke.forEach(s=>{
+    const ugo=getUgoB(s);const pl=getPl(s);
+    predRows.push([s.id,s.naziv,s.kat,s.jedMere||'',s.kolicina||'',s.jedCena||'',s.predvidjena||0,
+      s.lamelaA.izvodjac||'',Math.round(ugo),Math.round(pl),Math.round(Math.max(0,ugo-pl)),getStatus(s)]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(predRows),'Predmer');
+
+  // Sheet 2: Situacije
+  const sitRows=[['ID','Vrsta radova','Lamela','Izvođač','Iznos BRUTO','Datum','Rok plaćanja','Status','Plaćeno','Napomena']];
+  sit.forEach(s=>{
+    const st=stavke.find(x=>x.id===s.stavkaId);
+    sitRows.push([s.id,st?st.naziv:'—',s.lamela,s.izvodjac||'',s.iznos||0,s.datum||'',
+      s.rokPlacanja||'',s.statusPlacanja||'',s.placenoIznos||0,s.napomena||'']);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sitRows),'Situacije');
+
+  // Sheet 3: Uplate po izvođačima
+  const uplMap={};
+  stavke.forEach(s=>{
+    const iz=s.lamelaA.izvodjac||s.lamelaB.izvodjac;if(!iz)return;
+    if(!uplMap[iz])uplMap[iz]={ugo:0,pl:0,ispost:0,sit:0};
+    const ugo=s.lamelaA.ugovorenaUnos?calcBruto(s.lamelaA.ugovorenaUnos,s.lamelaA.tipCene):0;
+    uplMap[iz].ugo+=ugo||s.predvidjena||0;
+    uplMap[iz].pl+=s.lamelaA.placenoB||0;
+  });
+  sit.forEach(s=>{if(s.izvodjac&&uplMap[s.izvodjac]){uplMap[s.izvodjac].ispost+=s.iznos||0;uplMap[s.izvodjac].sit++;}});
+  const uplRows=[['Izvođač','Ugovoreno','Ispostavljeno','Plaćeno','Preostalo','% izmireno','Br.sit.']];
+  Object.entries(uplMap).sort((a,b)=>(b[1].ugo)-(a[1].ugo)).forEach(([naziv,v])=>{
+    const pr=Math.max(0,v.ugo-v.pl);
+    const pct=v.ugo>0?Math.round(v.pl/v.ugo*100):0;
+    uplRows.push([naziv,Math.round(v.ugo),Math.round(v.ispost),Math.round(v.pl),Math.round(pr),pct+'%',v.sit]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(uplRows),'Uplate');
+
+  // Sheet 4: Dnevnik
+  const dnvRows=[['Vreme','Akcija','Opis','Korisnik']];
+  dnevnik.forEach(d=>dnvRows.push([new Date(d.ts).toLocaleString('sr-Latn-RS'),d.akcija,d.opis,d.korisnik]));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dnvRows),'Dnevnik');
+
+  const dd=new Date();
+  const fname=`8mart_export_${dd.getDate()}.${dd.getMonth()+1}.${dd.getFullYear()}.xlsx`;
+  XLSX.writeFile(wb,fname);
+  logDnv('izmenjeno','Excel export — '+fname);
+}
+
+// ===== BACKUP / RESTORE =====
+function exportBackup(){
+  const data={
+    v:'10.3',
+    ts:new Date().toISOString(),
+    sit,izv,dnevnik,users,
+    stavke_placeno:stavke.map(s=>({id:s.id,plA:s.lamelaA.placenoB||0,plB:s.lamelaB.placenoB||0,stA:s.lamelaA.status,stB:s.lamelaB.status}))
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  const dd=new Date();
+  a.href=URL.createObjectURL(blob);
+  a.download=`8mart_backup_${dd.getDate()}_${dd.getMonth()+1}_${dd.getFullYear()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  logDnv('izmenjeno','Backup exportovan');
+  const msg=document.getElementById('backup-msg');
+  if(msg){msg.style.color='var(--lb)';msg.textContent='✅ Backup uspješno exportovan: '+a.download;}
+}
+
+function importBackup(inp){
+  const f=inp.files[0];if(!f)return;
+  const msg=document.getElementById('backup-msg');
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.sit||!data.izv){throw new Error('Nevažeći backup fajl');}
+      if(!confirm(`Uvesti backup iz ${new Date(data.ts).toLocaleString('sr-Latn-RS')}?\n\nOvo će ZAMIJENITI sve trenutno unesene podatke (izvođači, situacije, uplate, dnevnik).`))return;
+      sit=data.sit||[];
+      izv=data.izv||[];
+      dnevnik=data.dnevnik||[];
+      if(data.users) users=data.users;
+      // Restore placenoB na stavkama
+      if(data.stavke_placeno){
+        data.stavke_placeno.forEach(p=>{
+          const s=stavke.find(x=>x.id===p.id);
+          if(s){
+            s.lamelaA.placenoB=p.plA||0;
+            s.lamelaB.placenoB=p.plB||0;
+            if(p.stA) s.lamelaA.status=p.stA;
+            if(p.stB) s.lamelaB.status=p.stB;
+          }
+        });
+      }
+      sv(SITK,sit);sv(IK,izv);sv(DK,dnevnik);sv(UK,users);sv(SK,stavke);
+      logDnv('izmenjeno','Backup uvezen iz '+f.name);
+      if(msg){msg.style.color='var(--lb)';msg.textContent='✅ Backup uspješno uvezen! Stranica se osvježava...';}
+      setTimeout(()=>rAll(),500);
+    }catch(err){
+      if(msg){msg.style.color='var(--danger)';msg.textContent='❌ Greška: '+err.message;}
+    }
+  };
+  r.readAsText(f);
+  inp.value='';
+}
+
+// ===== PREDMER ↔ SITUACIJE BIDIREKTIONALNI SYNC =====
+// Kada se direktno menja status stavke u predmeru — ažurira se i situacija
+function syncStavkaToSit(stavkaId){
+  const s=stavke.find(x=>x.id===stavkaId);
+  if(!s)return;
+  // Recalculate placenoB from sit records
+  let totalPl=0;
+  sit.filter(si=>si.stavkaId===stavkaId).forEach(si=>{
+    const pl=si.statusPlacanja==='placeno'?si.iznos:si.placenoIznos||0;
+    totalPl+=pl;
+  });
+  const wasA=s.lamelaA.placenoB||0;
+  s.lamelaA.placenoB=totalPl;
+  if(wasA!==totalPl){sv(SK,stavke);}
+}
+
+// Recalculate all stavke placenoB from sit — call when needed to sync
+function resyncAllPlaceno(){
+  stavke.forEach(s=>{
+    const sitZaStavku=sit.filter(si=>si.stavkaId===s.id);
+    const total=sitZaStavku.reduce((a,si)=>{
+      return a+(si.statusPlacanja==='placeno'?si.iznos:si.placenoIznos||0);
+    },0);
+    s.lamelaA.placenoB=total;
+    s.lamelaB.placenoB=0;
+  });
+  sv(SK,stavke);
+  rAll();
+}
 function rDnevnik(){
   const fil=document.getElementById('dnv-filter')?.value||'';
   const body=document.getElementById('dnv-body');if(!body)return;
@@ -3200,7 +3417,7 @@ document.querySelectorAll('.tb-btn[data-l]').forEach(b=>b.addEventListener('clic
   }
   rAll();
 }));
-document.getElementById('btn-excel').addEventListener('click',exportExcel);
+document.getElementById('btn-excel').addEventListener('click',exportExcelFull);
 document.getElementById('btn-pdf').addEventListener('click',exportPDF);
 document.getElementById('btn-nova-stavka').addEventListener('click',()=>oM('stavka'));
 document.getElementById('btn-novi-izv').addEventListener('click',()=>oM('izv'));
