@@ -338,7 +338,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="dnevnik" onclick="nav('dnevnik')"><span class="ni-icon">📓</span>Dnevnik</div>
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
-  <div class="sver">v10.8 — Dacić Prom d.o.o.</div>
+  <div class="sver">v10.9 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -916,41 +916,64 @@ function calcPDV(unosVal, tip){
 
 // Prikaz ugovorene cene za dati red (uzima lamelu u obzir)
 // Ugovorena cena: 0 ako nema izvođača (nije ugovoreno), predviđena samo u prikazima koji to eksplicitno traže
-function getUgoB(s){
-  if(lam==='A'){const l=s.lamelaA;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcBruto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
-  if(lam==='B'){const l=s.lamelaB;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcBruto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
-  // Sve: ako isti izvođač na obje lamele sa istim iznosom — koristi samo jednom
+// Helper: da li je stavka zajednička (isti izv na A i B sa istim iznosom)
+function isShared(s){
   const a=s.lamelaA,b=s.lamelaB;
-  if(a.izvodjac&&b.izvodjac&&a.izvodjac===b.izvodjac&&a.ugovorenaUnos===b.ugovorenaUnos){
-    return a.ugovorenaUnos?calcBruto(a.ugovorenaUnos,a.tipCene):(s.predvidjena||0);
+  return !!(a.izvodjac&&b.izvodjac&&a.izvodjac===b.izvodjac&&a.ugovorenaUnos===b.ugovorenaUnos&&a.ugovorenaUnos>0);
+}
+function getUgoB(s){
+  const a=s.lamelaA,b=s.lamelaB;
+  if(lam==='A'){
+    if(!a.izvodjac)return 0;
+    const full=a.ugovorenaUnos?calcBruto(a.ugovorenaUnos,a.tipCene):(s.predvidjena||0);
+    return isShared(s)?full/2:full;
   }
-  const ua=a.izvodjac?(a.ugovorenaUnos?calcBruto(a.ugovorenaUnos,a.tipCene):s.predvidjena/2||0):0;
-  const ub=b.izvodjac?(b.ugovorenaUnos?calcBruto(b.ugovorenaUnos,b.tipCene):s.predvidjena/2||0):0;
+  if(lam==='B'){
+    if(!b.izvodjac)return 0;
+    const full=b.ugovorenaUnos?calcBruto(b.ugovorenaUnos,b.tipCene):(s.predvidjena||0);
+    return isShared(s)?full/2:full;
+  }
+  // sve: zajednička = puni iznos jednom; inače saberi A+B
+  if(isShared(s)) return a.ugovorenaUnos?calcBruto(a.ugovorenaUnos,a.tipCene):(s.predvidjena||0);
+  const ua=a.izvodjac?(a.ugovorenaUnos?calcBruto(a.ugovorenaUnos,a.tipCene):(s.predvidjena/2||0)):0;
+  const ub=b.izvodjac?(b.ugovorenaUnos?calcBruto(b.ugovorenaUnos,b.tipCene):(s.predvidjena/2||0)):0;
   return ua+ub;
 }
 function getUgoN(s){
-  if(lam==='A'){const l=s.lamelaA;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcNeto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
-  if(lam==='B'){const l=s.lamelaB;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcNeto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
   const a=s.lamelaA,b=s.lamelaB;
-  if(a.izvodjac&&b.izvodjac&&a.izvodjac===b.izvodjac&&a.ugovorenaUnos===b.ugovorenaUnos){
-    return a.ugovorenaUnos?calcNeto(a.ugovorenaUnos,a.tipCene):(s.predvidjena||0);
+  if(lam==='A'){
+    if(!a.izvodjac)return 0;
+    const full=a.ugovorenaUnos?calcNeto(a.ugovorenaUnos,a.tipCene):(s.predvidjena||0);
+    return isShared(s)?full/2:full;
   }
-  const ua=a.izvodjac?(a.ugovorenaUnos?calcNeto(a.ugovorenaUnos,a.tipCene):s.predvidjena/2||0):0;
-  const ub=b.izvodjac?(b.ugovorenaUnos?calcNeto(b.ugovorenaUnos,b.tipCene):s.predvidjena/2||0):0;
+  if(lam==='B'){
+    if(!b.izvodjac)return 0;
+    const full=b.ugovorenaUnos?calcNeto(b.ugovorenaUnos,b.tipCene):(s.predvidjena||0);
+    return isShared(s)?full/2:full;
+  }
+  if(isShared(s)) return a.ugovorenaUnos?calcNeto(a.ugovorenaUnos,a.tipCene):(s.predvidjena||0);
+  const ua=a.izvodjac?(a.ugovorenaUnos?calcNeto(a.ugovorenaUnos,a.tipCene):(s.predvidjena/2||0)):0;
+  const ub=b.izvodjac?(b.ugovorenaUnos?calcNeto(b.ugovorenaUnos,b.tipCene):(s.predvidjena/2||0)):0;
   return ua+ub;
 }
 function getPDV(s){
-  if(lam==='A'){const l=s.lamelaA;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcPDV(l.ugovorenaUnos,l.tipCene):0;}
-  if(lam==='B'){const l=s.lamelaB;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcPDV(l.ugovorenaUnos,l.tipCene):0;}
   const a=s.lamelaA,b=s.lamelaB;
-  if(a.izvodjac&&b.izvodjac&&a.izvodjac===b.izvodjac&&a.ugovorenaUnos===b.ugovorenaUnos){
-    return a.ugovorenaUnos?calcPDV(a.ugovorenaUnos,a.tipCene):0;
+  if(lam==='A'){
+    if(!a.izvodjac||!a.ugovorenaUnos)return 0;
+    return isShared(s)?calcPDV(a.ugovorenaUnos,a.tipCene)/2:calcPDV(a.ugovorenaUnos,a.tipCene);
   }
-  return (a.izvodjac&&a.ugovorenaUnos?calcPDV(a.ugovorenaUnos,a.tipCene):0)+(b.izvodjac&&b.ugovorenaUnos?calcPDV(b.ugovorenaUnos,b.tipCene):0);
+  if(lam==='B'){
+    if(!b.izvodjac||!b.ugovorenaUnos)return 0;
+    return isShared(s)?calcPDV(b.ugovorenaUnos,b.tipCene)/2:calcPDV(b.ugovorenaUnos,b.tipCene);
+  }
+  if(isShared(s)) return a.ugovorenaUnos?calcPDV(a.ugovorenaUnos,a.tipCene):0;
+  return (a.izvodjac&&a.ugovorenaUnos?calcPDV(a.ugovorenaUnos,a.tipCene):0)
+        +(b.izvodjac&&b.ugovorenaUnos?calcPDV(b.ugovorenaUnos,b.tipCene):0);
 }
 function getPl(s){
-  if(lam==='A') return s.lamelaA.placenoB||0;
-  if(lam==='B') return s.lamelaB.placenoB||0;
+  // placenoB je na lamelaA (lamelaB je uvijek 0)
+  if(lam==='A') return isShared(s)?(s.lamelaA.placenoB||0)/2:(s.lamelaA.placenoB||0);
+  if(lam==='B') return isShared(s)?(s.lamelaA.placenoB||0)/2:(s.lamelaB.placenoB||0);
   return (s.lamelaA.placenoB||0)+(s.lamelaB.placenoB||0);
 }
 function getStatus(s){
