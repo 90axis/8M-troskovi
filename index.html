@@ -751,15 +751,16 @@ let sb = null; // Supabase client (null = offline/localStorage mode)
 let sbUser = null;
 
 function sbInit(){
-  if(SUPABASE_URL === 'YOUR_SUPABASE_URL') {
-    console.log('Supabase nije konfigurisan — radi u offline/localStorage modu');
+  if(SUPABASE_URL==='YOUR_SUPABASE_URL'){
+    console.log('Supabase nije konfigurisan — offline mod');
     return;
   }
-  try {
-    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  try{
+    sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+    console.log('Supabase inicijalizovan');
     sbCheckSession();
-  } catch(e) {
-    console.warn('Supabase init error:', e);
+  }catch(e){
+    console.error('Supabase init error:',e);
   }
 }
 
@@ -795,20 +796,31 @@ function hideSbLogin(){
 }
 
 async function sbLogin(){
-  if(!sb) return;
-  const email = document.getElementById('sb-email')?.value?.trim();
-  const pass = document.getElementById('sb-pass')?.value;
-  const errEl = document.getElementById('login-error');
-  const loadEl = document.getElementById('sb-loading');
-  const btnEl = document.getElementById('sb-login-btn');
+  // Reinit if needed
+  if(!sb){
+    try{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);}catch(e){alert('Supabase nije dostupan: '+e.message);return;}
+  }
+  const email=document.getElementById('sb-email')?.value?.trim();
+  const pass=document.getElementById('sb-pass')?.value;
+  const errEl=document.getElementById('login-error');
+  const loadEl=document.getElementById('sb-loading');
+  const btnEl=document.getElementById('sb-login-btn');
   if(!email||!pass){if(errEl){errEl.style.display='block';errEl.textContent='Unesite email i lozinku.';}return;}
-  if(btnEl) btnEl.style.display='none';
-  if(loadEl) loadEl.style.display='block';
-  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if(loadEl) loadEl.style.display='none';
-  if(btnEl) btnEl.style.display='block';
+  if(btnEl)btnEl.style.display='none';
+  if(loadEl)loadEl.style.display='block';
+  if(errEl)errEl.style.display='none';
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(loadEl)loadEl.style.display='none';
+  if(btnEl)btnEl.style.display='block';
   if(error){
+    console.error('Login error:', error);
     if(errEl){errEl.style.display='block';errEl.textContent='Greška: '+error.message;}
+  } else {
+    console.log('Login OK, user:', data.user?.email);
+    hideSbLogin();
+    sbUser=data.user;
+    await sbLoadUserProfile();
+    rAll();
   }
 }
 
