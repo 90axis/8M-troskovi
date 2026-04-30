@@ -834,8 +834,11 @@ async function sbLogin(){
       body:JSON.stringify({email,password:pass})
     });
     const d=await r.json();
+    console.log('Auth response status:', r.status, 'ok:', r.ok);
+    console.log('Auth response data keys:', Object.keys(d));
     if(!r.ok||d.error){
-      throw new Error(d.error_description||d.error||d.message||'Greška pri prijavi');
+      console.error('Auth error detail:', d);
+      throw new Error(d.error_description||d.error||d.message||'Greška pri prijavi ('+r.status+')');
     }
     // Store session
     sbSession=d;
