@@ -146,7 +146,7 @@ tfoot tr.sum-row td.sum-pr{background:var(--fin-pr-light);color:var(--fin-pr)}
 .slogo .proj{font-size:11px;color:rgba(255,255,255,.55);margin-top:7px;padding-top:7px;border-top:1px solid rgba(255,255,255,.1)}
 .slogo .proj span{font-weight:600;color:rgba(255,255,255,.9)}
 .nav{padding:6px 0;flex:1;overflow-y:auto}
-.ni{display:flex;align-items:center;gap:9px;padding:9px 16px;font-size:13px;cursor:pointer;color:rgba(255,255,255,.6);border-left:2px solid transparent;white-space:nowrap;transition:all .15s}
+.ni{display:flex;align-items:center;gap:9px;padding:9px 16px;font-size:13px;cursor:pointer;color:rgba(255,255,255,0.55);border-left:2px solid transparent;white-space:nowrap;transition:all .15s}
 .ni:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.9)}
 .ni.active{background:rgba(255,255,255,.12);color:#fff;border-left-color:#5BA4E8;font-weight:500}
 .ni-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
@@ -309,7 +309,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
 .gc{display:flex;gap:8px;align-items:center;margin-bottom:11px;flex-wrap:wrap}
 .gc label{font-size:12px;color:var(--text2)}
 .gc select{font-size:12px;padding:3px 8px;height:27px;border-radius:6px;border:1px solid var(--border);background:#fff}
-.g-header{display:flex;border-bottom:1px solid var(--border);margin-bottom:2px;min-width:700px}
+.g-header{display:flex;border-bottom:1px solid var(--border);margin-bottom:2px;min-width:700px;position:sticky;top:0;z-index:10;background:var(--bg2)}
 .g-lc{width:200px;flex-shrink:0;font-size:10px;font-weight:600;color:var(--text2);padding:4px 7px}
 .g-months{display:flex;flex:1}
 .g-mon{font-size:10px;color:var(--text2);text-align:center;padding:3px 1px;border-left:1px solid var(--border);flex:1;min-width:0;overflow:hidden}
@@ -342,6 +342,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
 .g-bar-resize:hover{background:rgba(255,255,255,0.6)}
 .today-line{position:absolute;top:0;width:1.5px;background:#E53935;height:100%;z-index:2}
 .g-bl{font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis}
+#gantt-container{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 200px);border:1px solid var(--border);border-radius:8px;background:#fff}
 .g-leg{display:flex;gap:14px;margin-top:9px;flex-wrap:wrap}
 .g-li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
 .g-ld{width:10px;height:10px;border-radius:2px}
@@ -376,7 +377,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
   <div id="online-indicator" style="font-size:10px;padding:4px 10px;border-radius:10px;margin:0 12px 6px;background:#2E7D32;color:#fff;text-align:center;cursor:default">● Online</div>
-  <div class="sver">v11.8 — Dacić Prom d.o.o.</div>
+  <div class="sver">v12.0 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -509,7 +510,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
         <button id="btn-gantt-redo" class="btn btn-s" onclick="gRedo()" title="Ponovi (Ctrl+Y)" style="font-size:11px;height:26px;padding:0 8px;opacity:0.4" disabled>↪ Redo</button>
         <button class="btn btn-p" onclick="sbSaveAllGanttDates().then(()=>{const b=this;b.textContent='✅ Sačuvano!';setTimeout(()=>b.textContent='💾 Sačuvaj Gantt',2000);})" style="font-size:11px;height:26px;padding:0 10px">💾 Sačuvaj Gantt</button>
       </div>
-      <div id="gantt-container"></div>
+      <div id="gantt-container" style="max-height:calc(100vh - 180px);overflow-y:auto;overflow-x:auto;border:1px solid var(--border);border-radius:8px;background:#fff"></div>
       <div class="g-leg">
       <div class="g-li"><div class="g-ld" style="background:var(--la)"></div>U toku (A)</div>
         <div class="g-li"><div class="g-ld" style="background:#0D47A1"></div>Završeno (A)</div>
@@ -818,6 +819,21 @@ function sbInit(){
   }
 }
 
+function showLoadingOverlay(msg){
+  let el=document.getElementById('loading-overlay');
+  if(!el){el=document.createElement('div');el.id='loading-overlay';
+    el.style.cssText='position:fixed;inset:0;background:rgba(255,255,255,0.85);z-index:8888;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px';
+    el.innerHTML='<div style="width:40px;height:40px;border:4px solid #ddd;border-top-color:#1558A0;border-radius:50%;animation:spin .8s linear infinite"></div><div id="loading-msg" style="font-size:13px;color:#333;font-weight:500"></div>';
+    document.body.appendChild(el);
+  }
+  document.getElementById('loading-msg').textContent=msg||'Učitavam...';
+  el.style.display='flex';
+}
+function hideLoadingOverlay(){
+  const el=document.getElementById('loading-overlay');
+  if(el)el.style.display='none';
+}
+
 function showSbLogin(){
   const s = document.getElementById('login-screen');
   if(s){ s.style.display='flex'; }
@@ -879,6 +895,34 @@ async function sbLogin(){
   }
 }
 
+async function sbResetPass(e){
+  e.preventDefault();
+  const email=(document.getElementById('sb-email')?.value||'').trim();
+  const errEl=document.getElementById('login-error');
+  if(!email){
+    if(errEl){errEl.style.display='block';errEl.textContent='Unesite email pa kliknite "Zaboravio lozinku".';}
+    return;
+  }
+  try{
+    const r=await fetch(SUPABASE_URL+'/auth/v1/recover',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY},
+      body:JSON.stringify({email})
+    });
+    if(errEl){
+      errEl.style.display='block';
+      if(r.ok){
+        errEl.style.cssText='display:block;background:#E8F5E9;border:1px solid #A5D6A7;border-radius:8px;padding:10px 14px;font-size:12px;color:#1B5E20;margin-bottom:14px';
+        errEl.textContent='\u2705 Email za reset je poslat na: '+email;
+      }else{
+        const d=await r.json();
+        errEl.textContent='Gre\u0161ka: '+(d.msg||d.error||'Poku\u0161aj ponovo');
+      }
+    }
+  }catch(err){
+    if(errEl){errEl.style.display='block';errEl.textContent='Gre\u0161ka: '+err.message;}
+  }
+}
 function sbPasskeyLogin(){ alert('Passkey u razvoju.'); }
 
 async function sbLoadUserProfile(){
@@ -1747,7 +1791,7 @@ function updateSit(sid){
   }
   sv(SITK,sit);sv(SK,stavke);
   sbSaveSit(s);
-  logDnv('izmenjeno','Situacija #'+sid+' izmenjena');
+  sbLogDnv('izmenjeno','Situacija #'+sid+' izmenjena');
   cM();rAll();
 }
 
@@ -2342,7 +2386,7 @@ function saveSitFull(){
   }
   sv(SITK,sit);sv(SK,stavke);
   sbSaveSit(nova);
-  logDnv('dodano','Nova situacija — '+esc(izv.find(x=>x.naziv===izvNaziv)?.naziv||izvNaziv)+' | '+fmt(iznosBruto)+' €');
+  sbLogDnv('dodano','Nova situacija — '+esc(izv.find(x=>x.naziv===izvNaziv)?.naziv||izvNaziv)+' | '+fmt(iznosBruto)+' €');
   cM();rAll();
 }
 function saveSit(){saveSitFull();}
@@ -3486,7 +3530,9 @@ function exportKasPDF(){
   <style>body{font-family:Arial,sans-serif;font-size:9px;padding:14px}h1{font-size:13px;color:#C62828;margin-bottom:3px}
   .sub{font-size:8px;color:#666;margin-bottom:12px}table{width:100%;border-collapse:collapse}
   th{background:#FFEBEE;color:#C62828;padding:3px 5px;text-align:left;font-size:8px;border:0.5px solid #FFCDD2}
-  td{padding:2px 5px;border:0.5px solid #eee;font-size:8px}tr:nth-child(even)td{background:#fafafa}</style>
+  td{padding:2px 5px;border:0.5px solid #eee;font-size:8px}tr:nth-child(even)td{background:#fafafa}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
   </head><body><h1>⚠ Kašnjenja — 8. Mart${lam!=='sve'?' | Lamela '+lam:''}</h1>
   <div class="sub">Dacić Prom d.o.o. | ${ds} | Ukupno kašnjenja: ${rows.length}</div>
   <table><thead><tr><th>R.br.</th><th>Opis radova</th><th>Lam.</th><th>Izvođač</th><th>Rok</th><th>Kašnjenje</th><th>Status</th><th>Plaćeno</th><th>Preostalo</th></tr></thead>
@@ -3775,7 +3821,11 @@ function gSetAll(){
 }
 function gGetRange(){
   const cbs=[...document.querySelectorAll('.g-yr-cb:checked')];
-  if(!cbs.length) return {sD:new Date('2025-01-01'),eD:new Date('2030-01-01')};
+  if(!cbs.length){
+    const now=new Date();
+    const y=now.getFullYear();
+    return {sD:new Date(y+'-01-01'),eD:new Date((y+3)+'-01-01')};
+  }
   const years=cbs.map(c=>parseInt(c.value)).sort();
   return {sD:new Date(years[0]+'-01-01'), eD:new Date((years[years.length-1]+1)+'-01-01')};
 }
@@ -4012,6 +4062,9 @@ rAll(); if(typeof window.supabase!=='undefined'){ sbInit(); } else { hideSbLogin
       <input id="sb-pass" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;outline:none" onkeydown="if(event.key==='Enter')sbLogin()">
     </div>
     <button id="sb-login-btn" onclick="sbLogin()" style="width:100%;padding:12px;background:#1558A0;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Prijavi se</button>
+    <div style="text-align:right;margin-top:8px">
+      <a href="#" onclick="sbResetPass(event)" style="font-size:12px;color:#1558A0;text-decoration:none">Zaboravio/la lozinku?</a>
+    </div>
     <div id="sb-loading" style="display:none;text-align:center;padding:10px;font-size:12px;color:#888">Prijavljivanje...</div>
   </div>
 </div>
