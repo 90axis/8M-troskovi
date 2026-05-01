@@ -338,7 +338,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="dnevnik" onclick="nav('dnevnik')"><span class="ni-icon">📓</span>Dnevnik</div>
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
-  <div class="sver">v11.1 — Dacić Prom d.o.o.</div>
+  <div class="sver">v11.2 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -1148,42 +1148,70 @@ function calcPDV(unosVal, tip){
 
 // Prikaz ugovorene cene za dati red (uzima lamelu u obzir)
 // Ugovorena cena: 0 ako nema izvođača (nije ugovoreno), predviđena samo u prikazima koji to eksplicitno traže
-function getUgoB(s){
-  if(lam==='A'){const l=s.lamelaA;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcBruto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
-  if(lam==='B'){const l=s.lamelaB;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcBruto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
-  // Sve: ako isti izvođač na obje lamele sa istim iznosom — koristi samo jednom
+// Shared stavka = isti izvođač na A i B sa istim iznosom
+function isShared(s){
   const a=s.lamelaA,b=s.lamelaB;
-  if(a.izvodjac&&b.izvodjac&&a.izvodjac===b.izvodjac&&a.ugovorenaUnos===b.ugovorenaUnos){
-    return a.ugovorenaUnos?calcBruto(a.ugovorenaUnos,a.tipCene):(s.predvidjena||0);
+  return !!(a.izvodjac&&b.izvodjac&&a.izvodjac===b.izvodjac&&a.ugovorenaUnos===b.ugovorenaUnos&&a.ugovorenaUnos>0);
+}
+function getUgoB(s){
+  const a=s.lamelaA,b=s.lamelaB;
+  const shared=isShared(s);
+  if(lam==='A'){
+    if(!a.izvodjac)return 0;
+    const full=a.ugovorenaUnos?calcBruto(a.ugovorenaUnos,a.tipCene):(s.predvidjena||0);
+    return shared?full/2:full;
   }
-  const ua=a.izvodjac?(a.ugovorenaUnos?calcBruto(a.ugovorenaUnos,a.tipCene):s.predvidjena/2||0):0;
-  const ub=b.izvodjac?(b.ugovorenaUnos?calcBruto(b.ugovorenaUnos,b.tipCene):s.predvidjena/2||0):0;
+  if(lam==='B'){
+    if(!b.izvodjac)return 0;
+    const full=b.ugovorenaUnos?calcBruto(b.ugovorenaUnos,b.tipCene):(s.predvidjena||0);
+    return shared?full/2:full;
+  }
+  // sve/A+B: shared = puni iznos jednom
+  if(shared) return a.ugovorenaUnos?calcBruto(a.ugovorenaUnos,a.tipCene):(s.predvidjena||0);
+  const ua=a.izvodjac?(a.ugovorenaUnos?calcBruto(a.ugovorenaUnos,a.tipCene):(s.predvidjena/2||0)):0;
+  const ub=b.izvodjac?(b.ugovorenaUnos?calcBruto(b.ugovorenaUnos,b.tipCene):(s.predvidjena/2||0)):0;
   return ua+ub;
 }
 function getUgoN(s){
-  if(lam==='A'){const l=s.lamelaA;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcNeto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
-  if(lam==='B'){const l=s.lamelaB;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcNeto(l.ugovorenaUnos,l.tipCene):(s.predvidjena||0);}
   const a=s.lamelaA,b=s.lamelaB;
-  if(a.izvodjac&&b.izvodjac&&a.izvodjac===b.izvodjac&&a.ugovorenaUnos===b.ugovorenaUnos){
-    return a.ugovorenaUnos?calcNeto(a.ugovorenaUnos,a.tipCene):(s.predvidjena||0);
+  const shared=isShared(s);
+  if(lam==='A'){
+    if(!a.izvodjac)return 0;
+    const full=a.ugovorenaUnos?calcNeto(a.ugovorenaUnos,a.tipCene):(s.predvidjena||0);
+    return shared?full/2:full;
   }
-  const ua=a.izvodjac?(a.ugovorenaUnos?calcNeto(a.ugovorenaUnos,a.tipCene):s.predvidjena/2||0):0;
-  const ub=b.izvodjac?(b.ugovorenaUnos?calcNeto(b.ugovorenaUnos,b.tipCene):s.predvidjena/2||0):0;
+  if(lam==='B'){
+    if(!b.izvodjac)return 0;
+    const full=b.ugovorenaUnos?calcNeto(b.ugovorenaUnos,b.tipCene):(s.predvidjena||0);
+    return shared?full/2:full;
+  }
+  if(shared) return a.ugovorenaUnos?calcNeto(a.ugovorenaUnos,a.tipCene):(s.predvidjena||0);
+  const ua=a.izvodjac?(a.ugovorenaUnos?calcNeto(a.ugovorenaUnos,a.tipCene):(s.predvidjena/2||0)):0;
+  const ub=b.izvodjac?(b.ugovorenaUnos?calcNeto(b.ugovorenaUnos,b.tipCene):(s.predvidjena/2||0)):0;
   return ua+ub;
 }
 function getPDV(s){
-  if(lam==='A'){const l=s.lamelaA;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcPDV(l.ugovorenaUnos,l.tipCene):0;}
-  if(lam==='B'){const l=s.lamelaB;if(!l.izvodjac)return 0;return l.ugovorenaUnos?calcPDV(l.ugovorenaUnos,l.tipCene):0;}
   const a=s.lamelaA,b=s.lamelaB;
-  if(a.izvodjac&&b.izvodjac&&a.izvodjac===b.izvodjac&&a.ugovorenaUnos===b.ugovorenaUnos){
-    return a.ugovorenaUnos?calcPDV(a.ugovorenaUnos,a.tipCene):0;
+  const shared=isShared(s);
+  if(lam==='A'){
+    if(!a.izvodjac||!a.ugovorenaUnos)return 0;
+    return shared?calcPDV(a.ugovorenaUnos,a.tipCene)/2:calcPDV(a.ugovorenaUnos,a.tipCene);
   }
-  return (a.izvodjac&&a.ugovorenaUnos?calcPDV(a.ugovorenaUnos,a.tipCene):0)+(b.izvodjac&&b.ugovorenaUnos?calcPDV(b.ugovorenaUnos,b.tipCene):0);
+  if(lam==='B'){
+    if(!b.izvodjac||!b.ugovorenaUnos)return 0;
+    return shared?calcPDV(b.ugovorenaUnos,b.tipCene)/2:calcPDV(b.ugovorenaUnos,b.tipCene);
+  }
+  if(shared) return a.ugovorenaUnos?calcPDV(a.ugovorenaUnos,a.tipCene):0;
+  return (a.izvodjac&&a.ugovorenaUnos?calcPDV(a.ugovorenaUnos,a.tipCene):0)
+        +(b.izvodjac&&b.ugovorenaUnos?calcPDV(b.ugovorenaUnos,b.tipCene):0);
 }
 function getPl(s){
-  if(lam==='A') return s.lamelaA.placenoB||0;
-  if(lam==='B') return s.lamelaB.placenoB||0;
-  return (s.lamelaA.placenoB||0)+(s.lamelaB.placenoB||0);
+  const shared=isShared(s);
+  const plA=s.lamelaA.placenoB||0;
+  const plB=s.lamelaB.placenoB||0;
+  if(lam==='A') return shared?plA/2:plA;
+  if(lam==='B') return shared?plA/2:plB;
+  return plA+plB;
 }
 function getStatus(s){
   if(lam==='A') return s.lamelaA.status||'Nije počelo';
@@ -1748,11 +1776,13 @@ function rIzv(){
 // ===== GANTT =====
 function rGantt(){
   const {sD,eD}=gGetRange();
+  const checkedYears=[...document.querySelectorAll('.g-yr-cb:checked')].map(c=>parseInt(c.value));
+  const allYears=checkedYears.length===0;
   const gfk=document.getElementById('g-fk')?.value||'';
   const gfs=document.getElementById('g-fst')?.value||'';
   const mN=['Jan','Feb','Mar','Apr','Maj','Jun','Jul','Avg','Sep','Okt','Nov','Dec'];
-  let months=[];let c=new Date(sD.getFullYear(),sD.getMonth(),1);
-  while(c<=eD){months.push(mN[c.getMonth()]+(zoom==='all'?' '+String(c.getFullYear()).slice(2):''));c=new Date(c.getFullYear(),c.getMonth()+1,1);}
+  let months=[];let mc=new Date(sD.getFullYear(),sD.getMonth(),1);
+  while(mc<=eD){months.push(mN[mc.getMonth()]+' '+String(mc.getFullYear()).slice(2));mc=new Date(mc.getFullYear(),mc.getMonth()+1,1);}
   const sMs=sD.getTime(),eMs=eD.getTime(),tMs=eMs-sMs;
   const today=new Date(),tdP=Math.max(0,Math.min(100,Math.round((today.getTime()-sMs)/tMs*100)));
 
@@ -1986,6 +2016,15 @@ function oM(type,id){
         <div class="upload-area" onclick="document.getElementById('m-pdf').click()">${d.ugovorNaziv?'📄 '+esc(d.ugovorNaziv):'Klikni za upload PDF ugovora'}</div>
         <input type="file" id="m-pdf" accept=".pdf" style="display:none" onchange="hPdf(this)">
         <div id="m-pds" style="font-size:11px;color:var(--lb);margin-top:3px">${d.ugovorNaziv?'Priložen: '+esc(d.ugovorNaziv):''}</div>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;margin:14px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--border)">Rokovi izvođenja radova</div>
+      <div class="fr">
+        <div class="fg"><label>Početak radova (Lamela A)</label><input id="m-poc-a" type="date" value="${stavke.find(s=>s.lamelaA.izvodjac===d.naziv)?.lamelaA.pocetak||''}"></div>
+        <div class="fg"><label>Završetak radova (Lamela A)</label><input id="m-zav-a" type="date" value="${stavke.find(s=>s.lamelaA.izvodjac===d.naziv)?.lamelaA.zavrsetak||''}"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Početak radova (Lamela B)</label><input id="m-poc-b" type="date" value="${stavke.find(s=>s.lamelaB.izvodjac===d.naziv)?.lamelaB.pocetak||''}"></div>
+        <div class="fg"><label>Završetak radova (Lamela B)</label><input id="m-zav-b" type="date" value="${stavke.find(s=>s.lamelaB.izvodjac===d.naziv)?.lamelaB.zavrsetak||''}"></div>
       </div>
       <div class="mf mf-left">
         <div>${id?`<button class="btn btn-del" onclick="delIzv(${id},true)">🗑 Obriši izvođača</button>`:'&nbsp;'}</div>
@@ -2433,7 +2472,17 @@ function saveIzv(id){
   if(!d.naziv.trim()){alert('Unesite naziv firme.');return;}
   if(id){Object.assign(izv.find(i=>i.id===id),d);logDnv('izmenjeno','Izvođač izmenjen — '+d.naziv);}
   else{d.id=nii++;izv.push(d);logDnv('dodano','Novi izvođač — '+d.naziv);}
-  sv(IK,izv);cM();rIzv();
+  // Save dates to all stavke with this izvođač
+  const pocA=document.getElementById('m-poc-a')?.value||'';
+  const zavA=document.getElementById('m-zav-a')?.value||'';
+  const pocB=document.getElementById('m-poc-b')?.value||'';
+  const zavB=document.getElementById('m-zav-b')?.value||'';
+  stavke.forEach(s=>{
+    if(s.lamelaA.izvodjac===d.naziv){if(pocA)s.lamelaA.pocetak=pocA;if(zavA)s.lamelaA.zavrsetak=zavA;}
+    if(s.lamelaB.izvodjac===d.naziv){if(pocB)s.lamelaB.pocetak=pocB;if(zavB)s.lamelaB.zavrsetak=zavB;}
+  });
+  sv(SK,stavke);
+  sv(IK,izv);cM();rIzv();rGantt();
 }
 
 function calcAvansPreview(){
