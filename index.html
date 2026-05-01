@@ -345,7 +345,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="dnevnik" onclick="nav('dnevnik')"><span class="ni-icon">📓</span>Dnevnik</div>
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
-  <div class="sver">v11.4 — Dacić Prom d.o.o.</div>
+  <div class="sver">v11.6 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -474,6 +474,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
         </div>
         <select id="g-fk"><option value="">Sve kategorije</option></select>
         <select id="g-fst"><option value="">Svi statusi</option><option>Nije počelo</option><option>U toku</option><option>Završeno</option></select>
+        <button class="btn btn-p" onclick="sbSaveAllGanttDates().then(()=>{const b=this;b.textContent='✅ Sačuvano!';setTimeout(()=>b.textContent='💾 Sačuvaj Gantt',2000);})" style="font-size:11px;height:26px;padding:0 10px">💾 Sačuvaj Gantt</button>
       </div>
       <div id="gantt-container"></div>
       <div class="g-leg">
@@ -961,9 +962,31 @@ async function sbSaveStavkePlaceno(stavkaId){
   const row={
     stavka_id:stavkaId,
     placeno_a:s.lamelaA.placenoB||0, placeno_b:s.lamelaB.placenoB||0,
-    status_a:s.lamelaA.status||'Nije počelo', status_b:s.lamelaB.status||'Nije počelo'
+    status_a:s.lamelaA.status||'Nije počelo', status_b:s.lamelaB.status||'Nije počelo',
+    pocetak_a:s.lamelaA.pocetak||null, zavrsetak_a:s.lamelaA.zavrsetak||null,
+    pocetak_b:s.lamelaB.pocetak||null, zavrsetak_b:s.lamelaB.zavrsetak||null,
+    posto_a:s.lamelaA.posto||0, posto_b:s.lamelaB.posto||0
   };
   try{ await sb.from('stavke_placeno').upsert(row,{onConflict:'stavka_id'}); }catch(e){ console.warn('sbSaveStavkePlaceno error:',e); }
+}
+
+async function sbSaveAllGanttDates(){
+  sv(SK,stavke); // uvijek čuvaj u localStorage
+  if(!sb) return;
+  const rows=stavke.filter(s=>s.lamelaA.pocetak||s.lamelaB.pocetak||s.lamelaA.placenoB||s.lamelaB.placenoB).map(s=>({
+    stavka_id:s.id,
+    placeno_a:s.lamelaA.placenoB||0, placeno_b:s.lamelaB.placenoB||0,
+    status_a:s.lamelaA.status||'Nije počelo', status_b:s.lamelaB.status||'Nije počelo',
+    pocetak_a:s.lamelaA.pocetak||null, zavrsetak_a:s.lamelaA.zavrsetak||null,
+    pocetak_b:s.lamelaB.pocetak||null, zavrsetak_b:s.lamelaB.zavrsetak||null,
+    posto_a:s.lamelaA.posto||0, posto_b:s.lamelaB.posto||0
+  }));
+  if(!rows.length) return;
+  try{
+    const {error}=await sb.from('stavke_placeno').upsert(rows,{onConflict:'stavka_id'});
+    if(error) console.error('Gantt batch save error:',error);
+    else console.log('✅ Gantt datumi sačuvani u Supabase:',rows.length,'stavki');
+  }catch(e){ console.warn('Gantt save error:',e); }
 }
 
 function sbSubscribe(){
@@ -1800,6 +1823,7 @@ function rGantt(){
       if(!lobj.pocetak||!lobj.zavrsetak)return;
       const ganttExclude=['Zakonski troškovi','Projektni troškovi'];
       if(ganttExclude.includes(s.kat))return;
+      if(s.naziv==='ROBA SA STOVARIŠTA')return;
       if(gfk&&s.kat!==gfk)return;
       if(gfs&&lobj.status!==gfs)return;
       const sm=new Date(lobj.pocetak).getTime(),em=new Date(lobj.zavrsetak).getTime();
@@ -2494,7 +2518,7 @@ function saveIzv(id){
     if(s.lamelaA.izvodjac===d.naziv){if(pocA)s.lamelaA.pocetak=pocA;if(zavA)s.lamelaA.zavrsetak=zavA;}
     if(s.lamelaB.izvodjac===d.naziv){if(pocB)s.lamelaB.pocetak=pocB;if(zavB)s.lamelaB.zavrsetak=zavB;}
   });
-  sv(SK,stavke);
+  sbSaveAllGanttDates();
   sv(IK,izv);cM();rIzv();rGantt();
 }
 
@@ -2654,7 +2678,7 @@ function gDragStart(e,el){
     const newEMs=newSMs+_drag.durMs;
     _drag.lo.pocetak=new Date(newSMs).toISOString().slice(0,10);
     _drag.lo.zavrsetak=new Date(newEMs).toISOString().slice(0,10);
-    sv(SK,stavke);
+    sbSaveAllGanttDates();
     el.style.opacity='';el.style.zIndex='';
     _drag=null;
     document.removeEventListener('mousemove',onMove);
@@ -2702,7 +2726,7 @@ function gResizeStart(e,handle){
     const newW=Math.max(0.5,_resize.startWidth+dPct);
     const newEMs=_resize.sD.getTime()+(_resize.startLeft+newW)/100*_resize.tMs;
     _resize.lo.zavrsetak=new Date(newEMs).toISOString().slice(0,10);
-    sv(SK,stavke);
+    sbSaveAllGanttDates();
     el.style.opacity='';el.style.zIndex='';
     _resize=null;
     if(tooltip)tooltip.style.display='none';
