@@ -377,7 +377,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
   <div id="online-indicator" style="font-size:10px;padding:4px 10px;border-radius:10px;margin:0 12px 6px;background:#2E7D32;color:#fff;text-align:center;cursor:default">● Online</div>
-  <div class="sver">v12.2 — Dacić Prom d.o.o.</div>
+  <div class="sver">v12.3 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -972,12 +972,19 @@ async function sbLoadAll(){
       spData.forEach(r=>{
         const s=stavke.find(x=>x.id===r.stavka_id);
         if(s){
-          s.lamelaA.placenoB=parseFloat(r.placeno_a)||0;
-          s.lamelaB.placenoB=parseFloat(r.placeno_b)||0;
-          if(r.status_a) s.lamelaA.status=r.status_a;
-          if(r.status_b) s.lamelaB.status=r.status_b;
+          s.lamelaA.placenoB = parseFloat(r.placeno_a)||0;
+          s.lamelaB.placenoB = parseFloat(r.placeno_b)||0;
+          if(r.status_a) s.lamelaA.status = r.status_a;
+          if(r.status_b) s.lamelaB.status = r.status_b;
+          if(r.pocetak_a) s.lamelaA.pocetak = r.pocetak_a;
+          if(r.zavrsetak_a) s.lamelaA.zavrsetak = r.zavrsetak_a;
+          if(r.pocetak_b) s.lamelaB.pocetak = r.pocetak_b;
+          if(r.zavrsetak_b) s.lamelaB.zavrsetak = r.zavrsetak_b;
+          if(r.posto_a != null) s.lamelaA.posto = r.posto_a;
+          if(r.posto_b != null) s.lamelaB.posto = r.posto_b;
         }
       });
+      console.log('✅ Gantt datumi učitani iz Supabase:', spData.filter(r=>r.pocetak_a||r.pocetak_b).length, 'stavki sa datumima');
       sv(SK, stavke);
     }
   }catch(e){ console.warn('sbLoadAll error:', e); }
