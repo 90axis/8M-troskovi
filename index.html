@@ -296,13 +296,20 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
 .g-bar:active{cursor:grabbing;filter:brightness(0.9)}
 .g-tooltip{position:fixed;background:#1E3A5F;color:#fff;font-size:11px;padding:6px 10px;border-radius:6px;pointer-events:none;z-index:999;display:none;line-height:1.5;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.3)}
 /* Gantt bars: A bars blue, B bars green, per lam selection */
-.g-bar.c-a-act{background:var(--la)}
-.g-bar.c-a-don{background:#0D47A1}
-.g-bar.c-a-todo{background:var(--la-muted)}
-.g-bar.c-b-act{background:var(--lb)}
-.g-bar.c-b-don{background:#1B5E20}
-.g-bar.c-b-todo{background:var(--lb-muted)}
-.g-bar.c-act{background:var(--la)}.g-bar.c-don{background:#0D47A1}.g-bar.c-todo{background:#B4B2A9}
+.g-bar.c-a-act,.g-bar.c-a-don,.g-bar.c-a-todo{background:var(--la)}
+.g-bar.c-b-act,.g-bar.c-b-don,.g-bar.c-b-todo{background:var(--lb)}
+.g-bar.c-act,.g-bar.c-don,.g-bar.c-todo{background:var(--la)}
+/* Category colors on bars */
+.g-bar[data-kat="Instalacije"]{background:#00796B!important}
+.g-bar[data-kat="Fini građevinski radovi"]{background:#5D4037!important}
+.g-bar[data-kat="Troškovi uređenja partera"]{background:#2E7D32!important}
+.g-bar[data-kat="Materijal"]{background:#E65100!important}
+.g-bar[data-kat="Marketing"]{background:#AD1457!important}
+.g-bar[data-kat="Administrativni troškovi"]{background:#37474F!important}
+.g-bar.don-bar{opacity:0.75}
+/* Resize handle */
+.g-bar-resize{position:absolute;right:0;top:0;width:7px;height:100%;cursor:ew-resize;background:rgba(255,255,255,0.3);border-radius:0 3px 3px 0}
+.g-bar-resize:hover{background:rgba(255,255,255,0.6)}
 .today-line{position:absolute;top:0;width:1.5px;background:#E53935;height:100%;z-index:2}
 .g-bl{font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis}
 .g-leg{display:flex;gap:14px;margin-top:9px;flex-wrap:wrap}
@@ -338,7 +345,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="dnevnik" onclick="nav('dnevnik')"><span class="ni-icon">📓</span>Dnevnik</div>
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
-  <div class="sver">v11.3 — Dacić Prom d.o.o.</div>
+  <div class="sver">v11.4 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -1791,12 +1798,14 @@ function rGantt(){
   stavke.forEach(s=>{
     const addRow=(lobj,lbl,isA)=>{
       if(!lobj.pocetak||!lobj.zavrsetak)return;
+      const ganttExclude=['Zakonski troškovi','Projektni troškovi'];
+      if(ganttExclude.includes(s.kat))return;
       if(gfk&&s.kat!==gfk)return;
       if(gfs&&lobj.status!==gfs)return;
       const sm=new Date(lobj.pocetak).getTime(),em=new Date(lobj.zavrsetak).getTime();
       if(em<sMs||sm>eMs)return;
       const prefix=isA?'c-a-':'c-b-';
-      rows.push({s,lbl,naziv:s.naziv+(lam==='sve'?' ('+lbl+')':''),status:lobj.status,posto:lobj.posto||0,sm,em,prefix});
+      rows.push({s,lbl,naziv:s.naziv+(lam==='sve'?' ('+lbl+')':''),status:lobj.status,posto:lobj.posto||0,sm,em,prefix,kat:s.kat,izv:lobj.izvodjac||''});
     };
     if(lam==='A'||lam==='sve') addRow(s.lamelaA,'A',true);
     if(lam==='B'||lam==='sve') addRow(s.lamelaB,'B',false);
@@ -1812,11 +1821,15 @@ function rGantt(){
     const stavkaId=s.id, isARow=(lam==='B'?false:lam==='sve'?true:true);
     html+=`<div class="g-row"><div class="g-rl" title="${esc(r.naziv)}">${r.naziv}</div><div class="g-track" style="position:relative">`;
     if(today>=sD&&today<=eD)html+=`<div class="today-line" style="left:${tdP}%"></div>`;
-    html+=`<div class="g-bar ${cls}" style="left:${l}%;width:${w}%" 
+    const donCls=r.status==='Završeno'?' don-bar':'';
+    html+=`<div class="g-bar ${cls}${donCls}" style="left:${l}%;width:${w}%" 
       data-sid="${stavkaId}" data-lbl="${r.lbl}" data-sm="${r.sm}" data-em="${r.em}"
+      data-kat="${r.kat||''}"
       onmouseenter="gTip(event,this)" onmouseleave="gTipH()"
       onmousedown="gDragStart(event,this)">
-      <span class="g-bl">${r.posto}%</span></div></div></div>`;
+      <span class="g-bl">${r.izv?esc(r.izv.length>18?r.izv.slice(0,18)+'…':r.izv):r.posto+'%'}</span>
+      <div class="g-bar-resize" onmousedown="gResizeStart(event,this)" title="Pomjeri kraj"></div>
+    </div></div></div>`;
   });
   document.getElementById('gantt-container').innerHTML=`<div class="gantt-wrap">${html}</div>`;
 }
@@ -2644,6 +2657,55 @@ function gDragStart(e,el){
     sv(SK,stavke);
     el.style.opacity='';el.style.zIndex='';
     _drag=null;
+    document.removeEventListener('mousemove',onMove);
+    document.removeEventListener('mouseup',onUp);
+    rGantt();rKasnjenja();
+  }
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+}
+
+let _resize=null;
+function gResizeStart(e,handle){
+  e.preventDefault();
+  e.stopPropagation(); // Don't trigger gDragStart
+  const el=handle.parentElement;
+  const sid=parseInt(el.dataset.sid), lbl=el.dataset.lbl;
+  const s=stavke.find(x=>x.id===sid);if(!s)return;
+  const lo=lbl==='B'?s.lamelaB:s.lamelaA;
+  const track=el.parentElement;
+  const tRect=track.getBoundingClientRect();
+  const startX=e.clientX;
+  const startWidth=parseFloat(el.style.width);
+  const startLeft=parseFloat(el.style.left);
+  const {sD,eD}=gGetRange();
+  const tMs=eD.getTime()-sD.getTime();
+
+  el.style.opacity='0.85';el.style.zIndex='10';
+  _resize={el,lo,s,startX,startWidth,startLeft,tRect,tMs,sD};
+
+  function onMove(ev){
+    if(!_resize)return;
+    const dx=ev.clientX-_resize.startX;
+    const dPct=dx/_resize.tRect.width*100;
+    const newW=Math.max(0.5,_resize.startWidth+dPct);
+    el.style.width=newW+'%';
+    // Show new end date in tooltip
+    const newEMs=_resize.sD.getTime()+(_resize.startLeft+newW)/100*_resize.tMs;
+    const newZav=new Date(newEMs).toISOString().slice(0,10);
+    if(tooltip){tooltip.style.display='block';tooltip.innerHTML=`<strong>Kraj radova:</strong> ${newZav}`;}
+  }
+  function onUp(ev){
+    if(!_resize)return;
+    const dx=ev.clientX-_resize.startX;
+    const dPct=dx/_resize.tRect.width*100;
+    const newW=Math.max(0.5,_resize.startWidth+dPct);
+    const newEMs=_resize.sD.getTime()+(_resize.startLeft+newW)/100*_resize.tMs;
+    _resize.lo.zavrsetak=new Date(newEMs).toISOString().slice(0,10);
+    sv(SK,stavke);
+    el.style.opacity='';el.style.zIndex='';
+    _resize=null;
+    if(tooltip)tooltip.style.display='none';
     document.removeEventListener('mousemove',onMove);
     document.removeEventListener('mouseup',onUp);
     rGantt();rKasnjenja();
