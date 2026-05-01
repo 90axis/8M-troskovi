@@ -325,12 +325,12 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
 .g-bar.c-b-act,.g-bar.c-b-don,.g-bar.c-b-todo{background:var(--lb)}
 .g-bar.c-act,.g-bar.c-don,.g-bar.c-todo{background:var(--la)}
 /* Category colors on bars */
-.g-bar[data-kat="Instalacije"]{background:#00796B!important}
-.g-bar[data-kat="Fini građevinski radovi"]{background:#5D4037!important}
-.g-bar[data-kat="Troškovi uređenja partera"]{background:#2E7D32!important}
-.g-bar[data-kat="Materijal"]{background:#E65100!important}
-.g-bar[data-kat="Marketing"]{background:#AD1457!important}
-.g-bar[data-kat="Administrativni troškovi"]{background:#37474F!important}
+.g-bar[data-kat="Instalacije"]{background:#0097A7!important}
+.g-bar[data-kat="Fini građevinski radovi"]{background:#7B5EA7!important}
+.g-bar[data-kat="Troškovi uređenja partera"]{background:#388E3C!important}
+.g-bar[data-kat="Materijal"]{background:#F57C00!important}
+.g-bar[data-kat="Marketing"]{background:#E91E8C!important}
+.g-bar[data-kat="Administrativni troškovi"]{background:#546E7A!important}
 .g-bar.don-bar{opacity:0.75}
 .g-row{transition:background .12s}
 .g-row:hover{background:rgba(21,88,160,0.06)!important}
@@ -377,7 +377,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
   <div id="online-indicator" style="font-size:10px;padding:4px 10px;border-radius:10px;margin:0 12px 6px;background:#2E7D32;color:#fff;text-align:center;cursor:default">● Online</div>
-  <div class="sver">v12.0 — Dacić Prom d.o.o.</div>
+  <div class="sver">v12.2 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -513,9 +513,12 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
       <div id="gantt-container" style="max-height:calc(100vh - 180px);overflow-y:auto;overflow-x:auto;border:1px solid var(--border);border-radius:8px;background:#fff"></div>
       <div class="g-leg">
       <div class="g-li"><div class="g-ld" style="background:var(--la)"></div>U toku (A)</div>
-        <div class="g-li"><div class="g-ld" style="background:#0D47A1"></div>Završeno (A)</div>
-        <div class="g-li"><div class="g-ld" style="background:var(--lb)"></div>U toku (B)</div>
-        <div class="g-li"><div class="g-ld" style="background:#1B5E20"></div>Završeno (B)</div>
+        <div class="g-li"><div class="g-ld" style="background:var(--la)"></div>Završeno (A)</div>
+        <div class="g-li"><div class="g-ld" style="background:var(--lb)"></div>A+B</div>
+        <div class="g-li"><div class="g-ld" style="background:#0097A7"></div>Instalacije</div>
+      <div class="g-li"><div class="g-ld" style="background:#7B5EA7"></div>Fini GR</div>
+      <div class="g-li"><div class="g-ld" style="background:#388E3C"></div>Parter</div>
+      <div class="g-li"><div class="g-ld" style="background:#F57C00"></div>Materijal</div>
         <div class="g-li"><div class="g-ld" style="background:var(--la-muted)"></div>Nije počelo</div>
         <div class="g-li"><div class="g-ld" style="background:#E53935;width:2px;height:10px;border-radius:0"></div>Danas</div>
       </div>
@@ -1050,20 +1053,33 @@ async function sbSaveStavkePlaceno(stavkaId){
 async function sbSaveAllGanttDates(){
   sv(SK,stavke); // uvijek čuvaj u localStorage
   if(!sb) return;
-  const rows=stavke.filter(s=>s.lamelaA.pocetak||s.lamelaB.pocetak||s.lamelaA.placenoB||s.lamelaB.placenoB).map(s=>({
-    stavka_id:s.id,
-    placeno_a:s.lamelaA.placenoB||0, placeno_b:s.lamelaB.placenoB||0,
-    status_a:s.lamelaA.status||'Nije počelo', status_b:s.lamelaB.status||'Nije počelo',
-    pocetak_a:s.lamelaA.pocetak||null, zavrsetak_a:s.lamelaA.zavrsetak||null,
-    pocetak_b:s.lamelaB.pocetak||null, zavrsetak_b:s.lamelaB.zavrsetak||null,
-    posto_a:s.lamelaA.posto||0, posto_b:s.lamelaB.posto||0
-  }));
+  const rows=stavke.filter(s=>s.lamelaA.pocetak||s.lamelaB.pocetak||s.lamelaA.placenoB||s.lamelaB.placenoB).map(s=>{
+    const row={
+      stavka_id:s.id,
+      placeno_a:s.lamelaA.placenoB||0, placeno_b:s.lamelaB.placenoB||0,
+      status_a:s.lamelaA.status||'Nije počelo', status_b:s.lamelaB.status||'Nije počelo',
+      pocetak_a:s.lamelaA.pocetak||null, zavrsetak_a:s.lamelaA.zavrsetak||null,
+      pocetak_b:s.lamelaB.pocetak||null, zavrsetak_b:s.lamelaB.zavrsetak||null
+    };
+    // Include posto only if columns exist (added via migration)
+    try{row.posto_a=s.lamelaA.posto||0;row.posto_b=s.lamelaB.posto||0;}catch(e){}
+    return row;
+  });
   if(!rows.length) return;
   try{
     const {error}=await sb.from('stavke_placeno').upsert(rows,{onConflict:'stavka_id'});
-    if(error) console.error('Gantt batch save error:',error);
-    else console.log('✅ Gantt datumi sačuvani u Supabase:',rows.length,'stavki');
-  }catch(e){ console.warn('Gantt save error:',e); }
+    if(error){
+      console.error('Gantt save error:',error.message,'code:',error.code);
+      if(error.code==='PGRST204'||error.message?.includes('column')){
+        alert('⚠ Nedostaje kolona u bazi. Pokreni u Supabase SQL Editoru:\n\nALTER TABLE stavke_placeno\nADD COLUMN IF NOT EXISTS posto_a integer DEFAULT 0,\nADD COLUMN IF NOT EXISTS posto_b integer DEFAULT 0;');
+      }
+    } else {
+      console.log('✅ Gantt sačuvan:',rows.length,'stavki');
+      // Show brief success feedback
+      const btn=document.querySelector('[onclick*="sbSaveAllGanttDates"]');
+      if(btn){const orig=btn.textContent;btn.textContent='✅ Sačuvano!';setTimeout(()=>btn.textContent=orig,2000);}
+    }
+  }catch(e){ console.error('Gantt save exception:',e.message); }
 }
 
 function sbSubscribe(){
@@ -1191,7 +1207,30 @@ const DI=[
 
 // Uvek koristi svježi DS (84 stavke iz Excela)
 // Situacije i izvođači se migriraju iz prethodne verzije ako postoje
-let stavke=DS.map(s=>JSON.parse(JSON.stringify(s))); // fresh copy, no localStorage override
+// Init stavke — try localStorage first (has Gantt dates), fallback to DS
+let stavke=(()=>{
+  try{
+    const saved=localStorage.getItem(SK);
+    if(saved){
+      const parsed=JSON.parse(saved);
+      if(parsed&&parsed.length===DS.length){
+        // Merge: keep DS financial data, use saved dates/status/posto/placenoB
+        return DS.map(s=>{
+          const sv2=parsed.find(x=>x.id===s.id);
+          if(!sv2) return JSON.parse(JSON.stringify(s));
+          const merged=JSON.parse(JSON.stringify(s));
+          // Preserve saved operational data
+          ['pocetak','zavrsetak','status','posto','placenoB'].forEach(f=>{
+            if(sv2.lamelaA&&sv2.lamelaA[f]!=null) merged.lamelaA[f]=sv2.lamelaA[f];
+            if(sv2.lamelaB&&sv2.lamelaB[f]!=null) merged.lamelaB[f]=sv2.lamelaB[f];
+          });
+          return merged;
+        });
+      }
+    }
+  }catch(e){console.warn('stavke localStorage load failed:',e);}
+  return DS.map(s=>JSON.parse(JSON.stringify(s)));
+})();
 {
   const oldSit=localStorage.getItem('8mart_sit9');
   const oldIzv=localStorage.getItem('8mart_izv9');
