@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co;">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>8. Mart v10 — Evidencija troškova</title>
@@ -77,6 +78,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
   #home-charts{grid-template-columns:1fr!important}
   #home-lamela-grid{grid-template-columns:1fr!important}
   #home-charts canvas{max-height:220px}
+}
+/* Mobile improvements */
+@media(max-width:600px){
+  .main{flex-direction:column}
+  .sidebar{position:fixed;left:-220px;transition:left .25s;z-index:200;height:100vh}
+  .sidebar.open{left:0}
+  .content{margin-left:0!important;width:100%}
+  .topbar{padding:0 10px}
+  .metrics{grid-template-columns:1fr 1fr!important}
+  .fr{flex-direction:column}
+  .fr3{flex-direction:column}
+  .tbox{padding:10px!important}
+  .mc{padding:10px 12px!important}
+  /* Situacije table horizontal scroll */
+  #page-situacije .tbox{overflow-x:auto}
+  /* Predmer table */
+  #page-predmer .tbox{overflow-x:auto}
+  /* Gantt */
+  #page-gantt .gc{flex-wrap:wrap;gap:6px}
+  .g-rl{font-size:10px!important;min-width:120px!important;max-width:120px!important}
+  /* Modali */
+  .mwrap .mc-inner{margin:10px!important;max-height:calc(100vh - 20px)!important}
+  /* Uplate table */
+  #page-uplate .tbox{overflow-x:auto}
 }
 .val-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 14px;border-top:3px solid var(--warn);margin-bottom:16px}
 .val-card .vc-title{font-size:11px;font-weight:700;color:var(--warn);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
@@ -307,6 +332,11 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
 .g-bar[data-kat="Marketing"]{background:#AD1457!important}
 .g-bar[data-kat="Administrativni troškovi"]{background:#37474F!important}
 .g-bar.don-bar{opacity:0.75}
+.g-row{transition:background .12s}
+.g-row:hover{background:rgba(21,88,160,0.06)!important}
+.g-row:hover .g-bar{filter:brightness(1.1)}
+.g-label-row{transition:background .12s}
+.g-label-row:hover{background:rgba(21,88,160,0.08)!important}
 /* Resize handle */
 .g-bar-resize{position:absolute;right:0;top:0;width:7px;height:100%;cursor:ew-resize;background:rgba(255,255,255,0.3);border-radius:0 3px 3px 0}
 .g-bar-resize:hover{background:rgba(255,255,255,0.6)}
@@ -345,7 +375,8 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="dnevnik" onclick="nav('dnevnik')"><span class="ni-icon">📓</span>Dnevnik</div>
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
-  <div class="sver">v11.6 — Dacić Prom d.o.o.</div>
+  <div id="online-indicator" style="font-size:10px;padding:4px 10px;border-radius:10px;margin:0 12px 6px;background:#2E7D32;color:#fff;text-align:center;cursor:default">● Online</div>
+  <div class="sver">v11.8 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -474,6 +505,8 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
         </div>
         <select id="g-fk"><option value="">Sve kategorije</option></select>
         <select id="g-fst"><option value="">Svi statusi</option><option>Nije počelo</option><option>U toku</option><option>Završeno</option></select>
+        <button id="btn-gantt-undo" class="btn btn-s" onclick="gUndo()" title="Poništi (Ctrl+Z)" style="font-size:11px;height:26px;padding:0 8px;opacity:0.4" disabled>↩ Undo</button>
+        <button id="btn-gantt-redo" class="btn btn-s" onclick="gRedo()" title="Ponovi (Ctrl+Y)" style="font-size:11px;height:26px;padding:0 8px;opacity:0.4" disabled>↪ Redo</button>
         <button class="btn btn-p" onclick="sbSaveAllGanttDates().then(()=>{const b=this;b.textContent='✅ Sačuvano!';setTimeout(()=>b.textContent='💾 Sačuvaj Gantt',2000);})" style="font-size:11px;height:26px;padding:0 10px">💾 Sačuvaj Gantt</button>
       </div>
       <div id="gantt-container"></div>
@@ -1609,7 +1642,7 @@ function editSit(sid){
   const ow=document.getElementById('mwrap'),mc=document.getElementById('mcont');
   const today=s.datum||new Date().toISOString().slice(0,10);
   const d30=s.rokPlacanja||new Date(Date.now()+30*24*60*60*1000).toISOString().slice(0,10);
-  mc.innerHTML=`<h2>✏ Uredi situaciju #${sid}</h2>
+  mc.innerHTML=`<h2>✏ Uredi situaciju #${sid}</h2><input type='hidden' id='m-sit-id' value='${sid}'>
     <div class="fr">
       <div class="fg"><label>Izvođač</label>
         <select id="m-izvr-sel"><option value="">— odaberi —</option>
@@ -1713,6 +1746,7 @@ function updateSit(sid){
     newStav.lamelaA.placenoB=(newStav.lamelaA.placenoB||0)+newPl;
   }
   sv(SITK,sit);sv(SK,stavke);
+  sbSaveSit(s);
   logDnv('izmenjeno','Situacija #'+sid+' izmenjena');
   cM();rAll();
 }
@@ -1729,8 +1763,10 @@ function delSit(sid,confirmed){
     }
   }
   const _delSitName=s?'Situacija #'+sid+(s.izvodjac?' — '+s.izvodjac:''):'Situacija #'+sid;
+  const _delDbId=s?._dbId;
   sit=sit.filter(x=>x.id!==sid);
   sv(SITK,sit);sv(SK,stavke);
+  if(_delDbId) sbDeleteSit(_delDbId);
   logDnv('obrisano',_delSitName);
   cM();rAll();
 }
@@ -1843,7 +1879,8 @@ function rGantt(){
     const w=Math.max(1,Math.round((r.em-r.sm)/tMs*100));
     const cls=r.prefix+(r.status==='Završeno'?'don':r.status==='U toku'?'act':'todo');
     const stavkaId=s.id, isARow=(lam==='B'?false:lam==='sve'?true:true);
-    html+=`<div class="g-row"><div class="g-rl" title="${esc(r.naziv)}">${r.naziv}</div><div class="g-track" style="position:relative">`;
+    const rowId='gr-'+stavkaId+'-'+r.lbl;
+    html+=`<div class="g-row" id="${rowId}" onmouseenter="gRowHover('${rowId}',true)" onmouseleave="gRowHover('${rowId}',false)"><div class="g-rl" title="${esc(r.naziv)}">${r.naziv}</div><div class="g-track" style="position:relative">`;
     if(today>=sD&&today<=eD)html+=`<div class="today-line" style="left:${tdP}%"></div>`;
     const donCls=r.status==='Završeno'?' don-bar':'';
     html+=`<div class="g-bar ${cls}${donCls}" style="left:${l}%;width:${w}%" 
@@ -2271,6 +2308,7 @@ function calcSitBruto(){
 }
 
 function saveSitFull(){
+  if(!validateSit())return;
   const izvNaziv=document.getElementById('m-izvr-sel')?.value||'';
   const stavkaId=parseInt(document.getElementById('m-st')?.value)||0;
   const iznos=parseFloat(document.getElementById('m-iznos')?.value)||0;
@@ -2303,6 +2341,7 @@ function saveSitFull(){
     s.lamelaA.placenoB=(s.lamelaA.placenoB||0)+plPlaceno;
   }
   sv(SITK,sit);sv(SK,stavke);
+  sbSaveSit(nova);
   logDnv('dodano','Nova situacija — '+esc(izv.find(x=>x.naziv===izvNaziv)?.naziv||izvNaziv)+' | '+fmt(iznosBruto)+' €');
   cM();rAll();
 }
@@ -2476,6 +2515,7 @@ function markUplata(sid, tip){
 }
 
 function saveIzv(id){
+  if(!validateIzv())return;
   const d={
     naziv:document.getElementById('m-naziv').value,
     pib:document.getElementById('m-pib')?.value||'',
@@ -2507,8 +2547,8 @@ function saveIzv(id){
     ugovorPdf:window._pd.data
   };
   if(!d.naziv.trim()){alert('Unesite naziv firme.');return;}
-  if(id){Object.assign(izv.find(i=>i.id===id),d);logDnv('izmenjeno','Izvođač izmenjen — '+d.naziv);}
-  else{d.id=nii++;izv.push(d);logDnv('dodano','Novi izvođač — '+d.naziv);}
+  if(id){const rec=izv.find(i=>i.id===id);Object.assign(rec,d);sbSaveIzv(rec);logDnv('izmenjeno','Izvođač izmenjen — '+d.naziv);}
+  else{d.id=nii++;izv.push(d);sbSaveIzv(d);logDnv('dodano','Novi izvođač — '+d.naziv);}
   // Save dates to all stavke with this izvođač
   const pocA=document.getElementById('m-poc-a')?.value||'';
   const zavA=document.getElementById('m-zav-a')?.value||'';
@@ -2537,8 +2577,10 @@ function calcAvansPreview(){
 function delIzv(id, fromModal){
   if(!confirm('Obrisati ovog izvođača?')) return;
   const _name=izv.find(i=>i.id===id)?.naziv||'#'+id;
+  const _izvDbId=izv.find(i=>i.id===id)?._dbId;
   izv=izv.filter(i=>i.id!==id);
   sv(IK,izv);
+  if(_izvDbId) sbDeleteIzv(_izvDbId);
   logDnv('obrisano','Izvođač obrisan — '+_name);
   if(fromModal) cM();
   rIzv();
@@ -2619,6 +2661,15 @@ function exportPDF(){
 
 // ===== GANTT TOOLTIP & DRAG =====
 const tooltip=document.getElementById('g-tooltip');
+function gRowHover(rowId, on){
+  // Highlight both the track row and the matching label row
+  const trackEl=document.getElementById(rowId);
+  const labelEl=document.getElementById('lbl-'+rowId);
+  const bg=on?'rgba(21,88,160,0.07)':'';
+  if(trackEl) trackEl.style.background=bg;
+  if(labelEl) labelEl.style.background=bg;
+}
+
 function gTip(e,el){
   const sid=parseInt(el.dataset.sid), lbl=el.dataset.lbl;
   const s=stavke.find(x=>x.id===sid);if(!s)return;
@@ -2653,6 +2704,7 @@ function gDragStart(e,el){
   const {sD,eD}=gGetRange();
   const tMs=eD.getTime()-sD.getTime();
 
+  gSnapshot();
   el.style.opacity='0.75';el.style.zIndex='10';
   _drag={el,lo,s,lbl,startX,startLeft,tRect,tMs,sD,durMs};
 
@@ -2705,6 +2757,7 @@ function gResizeStart(e,handle){
   const {sD,eD}=gGetRange();
   const tMs=eD.getTime()-sD.getTime();
 
+  gSnapshot();
   el.style.opacity='0.85';el.style.zIndex='10';
   _resize={el,lo,s,startX,startWidth,startLeft,tRect,tMs,sD};
 
@@ -3583,6 +3636,112 @@ function resyncAllPlaceno(){
   sv(SK,stavke);
   rAll();
 }
+
+// ============================================================
+// SUPABASE — delete functions
+// ============================================================
+async function sbDeleteSit(dbId){
+  if(!sb||!dbId)return;
+  try{await sb.from('situacije').delete().eq('id',dbId);}catch(e){console.warn('sbDeleteSit:',e);}
+}
+async function sbDeleteIzv(dbId){
+  if(!sb||!dbId)return;
+  try{await sb.from('izvodjaci').delete().eq('id',dbId);}catch(e){console.warn('sbDeleteIzv:',e);}
+}
+async function sbLogDnv(akcija,opis){
+  logDnv(akcija,opis);
+  if(!sb)return;
+  try{await sb.from('dnevnik').insert({akcija,opis,korisnik:curUser?.username||sbUser?.email||'?',user_id:sbUser?.id||null});}catch(e){console.warn('sbLogDnv:',e);}
+}
+
+// ============================================================
+// OFFLINE / ONLINE INDIKATOR
+// ============================================================
+function updateOnlineStatus(){
+  const el=document.getElementById('online-indicator');
+  if(!el)return;
+  const online=navigator.onLine;
+  el.style.background=online?'#2E7D32':'#E53935';
+  el.title=online?'Online — podaci se čuvaju u cloud':'Offline — radi lokalno, sinhronizacija na čekanju';
+  el.textContent=online?'● Online':'● Offline';
+}
+window.addEventListener('online',()=>{updateOnlineStatus();if(sb)sbLoadAll().then(()=>{_lastSyncTs=Date.now();});});
+window.addEventListener('offline',updateOnlineStatus);
+
+// ============================================================
+// UNDO / REDO ZA GANTT (Ctrl+Z / Ctrl+Y)
+// ============================================================
+const _undoStack=[],_redoStack=[];
+const UNDO_MAX=30;
+function gSnapshot(){
+  const snap=stavke.map(s=>({id:s.id,pocA:s.lamelaA.pocetak,zavA:s.lamelaA.zavrsetak,pocB:s.lamelaB.pocetak,zavB:s.lamelaB.zavrsetak}));
+  _undoStack.push(JSON.stringify(snap));
+  if(_undoStack.length>UNDO_MAX)_undoStack.shift();
+  _redoStack.length=0;
+  updateUndoBtns();
+}
+function gApplySnap(snap){
+  JSON.parse(snap).forEach(({id,pocA,zavA,pocB,zavB})=>{
+    const s=stavke.find(x=>x.id===id);
+    if(s){s.lamelaA.pocetak=pocA;s.lamelaA.zavrsetak=zavA;s.lamelaB.pocetak=pocB;s.lamelaB.zavrsetak=zavB;}
+  });
+  sv(SK,stavke);rGantt();updateUndoBtns();
+}
+function gUndo(){if(!_undoStack.length)return;_redoStack.push(JSON.stringify(stavke.map(s=>({id:s.id,pocA:s.lamelaA.pocetak,zavA:s.lamelaA.zavrsetak,pocB:s.lamelaB.pocetak,zavB:s.lamelaB.zavrsetak}))));gApplySnap(_undoStack.pop());}
+function gRedo(){if(!_redoStack.length)return;_undoStack.push(JSON.stringify(stavke.map(s=>({id:s.id,pocA:s.lamelaA.pocetak,zavA:s.lamelaA.zavrsetak,pocB:s.lamelaB.pocetak,zavB:s.lamelaB.zavrsetak}))));gApplySnap(_redoStack.pop());}
+function updateUndoBtns(){
+  const u=document.getElementById('btn-gantt-undo'),r=document.getElementById('btn-gantt-redo');
+  if(u){u.disabled=!_undoStack.length;u.style.opacity=_undoStack.length?'1':'0.4';}
+  if(r){r.disabled=!_redoStack.length;r.style.opacity=_redoStack.length?'1':'0.4';}
+}
+document.addEventListener('keydown',e=>{
+  const ganttActive=document.getElementById('page-gantt')?.classList.contains('active');
+  if(!ganttActive)return;
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();gUndo();}
+  if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){e.preventDefault();gRedo();}
+});
+
+// ============================================================
+// INPUT VALIDACIJA
+// ============================================================
+function validateSit(){
+  const iznos=parseFloat(document.getElementById('m-iznos')?.value)||0;
+  const stavkaId=parseInt(document.getElementById('m-st')?.value)||0;
+  const izvodjac=document.getElementById('m-izvr-sel')?.value||'';
+  const errors=[];
+  if(!stavkaId)errors.push('Odaberite stavku iz predmera');
+  if(!izvodjac)errors.push('Odaberite izvođača');
+  if(iznos<=0)errors.push('Iznos mora biti veći od 0 €');
+  if(iznos>50000000)errors.push('Iznos nije realan (>50.000.000 €)');
+  const brRac=(document.getElementById('m-br-rac')?.value||'').trim();
+  const sid=parseInt(document.getElementById('m-sit-id')?.value)||0;
+  if(brRac&&sit.some(s=>s.brRacuna===brRac&&s.id!==sid))errors.push('Broj računa "'+brRac+'" već postoji');
+  if(errors.length){alert('❌ Greška pri unosu:\n\n• '+errors.join('\n• '));return false;}
+  return true;
+}
+function validateIzv(){
+  const naziv=(document.getElementById('m-naziv')?.value||'').trim();
+  const id=parseInt(document.getElementById('m-izv-id-hidden')?.value)||0;
+  const errors=[];
+  if(!naziv)errors.push('Naziv firme je obavezan');
+  if(naziv.length>200)errors.push('Naziv je predugačak (max 200 znakova)');
+  if(izv.some(i=>i.naziv===naziv&&i.id!==id))errors.push('Izvođač "'+naziv+'" već postoji u registru');
+  if(errors.length){alert('❌ Greška:\n\n• '+errors.join('\n• '));return false;}
+  return true;
+}
+
+// ============================================================
+// CONFLICT / FRESHNESS CHECK
+// ============================================================
+let _lastSyncTs=Date.now();
+function markSynced(){_lastSyncTs=Date.now();updateOnlineStatus();}
+setInterval(()=>{
+  if(Date.now()-_lastSyncTs>300000&&navigator.onLine&&sb){
+    const el=document.getElementById('online-indicator');
+    if(el&&el.textContent.includes('Online')){el.style.background='#FF6F00';el.textContent='● Zastarjelo';}
+  }
+},60000);
+
 function rDnevnik(){
   const fil=document.getElementById('dnv-filter')?.value||'';
   const body=document.getElementById('dnv-body');if(!body)return;
@@ -3828,6 +3987,7 @@ document.getElementById('kd-ostali')?.addEventListener('input',rKalk);
 // kk-izv and kk-lam use inline onchange handlers
 // Init
 document.body.classList.add('lam-sve');
+updateOnlineStatus();
 syncIzvFromDS();
 applyRole();
 rAll(); if(typeof window.supabase!=='undefined'){ sbInit(); } else { hideSbLogin(); }
