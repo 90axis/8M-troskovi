@@ -377,7 +377,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
   <div id="online-indicator" style="font-size:10px;padding:4px 10px;border-radius:10px;margin:0 12px 6px;background:#2E7D32;color:#fff;text-align:center;cursor:default">● Online</div>
-  <div class="sver">v12.9 — Dacić Prom d.o.o.</div>
+  <div class="sver">v13.0 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -808,8 +808,9 @@ function sbInit(){
           sbUser = sess.user;
           sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
             global:{headers:{'Authorization':'Bearer '+sess.access_token,'apikey':SUPABASE_KEY}},
-            auth:{autoRefreshToken:false,persistSession:false}
+            auth:{autoRefreshToken:false,persistSession:false,detectSessionInUrl:false}
           });
+          console.log('✅ Session restored, expires:', new Date(sess.expires_at*1000).toLocaleTimeString());
           hideSbLogin();
           sbLoadAll().then(()=>{rAll();sbSubscribe();});
           return;
@@ -881,11 +882,17 @@ async function sbLogin(){
     sbSession = d;
     sbUser    = d.user;
     sessionStorage.setItem('8mart_sb_session', JSON.stringify(d));
-    // Reinit client with Bearer token
+    // Reinit client with Bearer token — ensures all requests are authenticated
     sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-      global:{headers:{'Authorization':'Bearer '+d.access_token,'apikey':SUPABASE_KEY}},
-      auth:{autoRefreshToken:false,persistSession:false}
+      global:{
+        headers:{
+          'Authorization':'Bearer '+d.access_token,
+          'apikey':SUPABASE_KEY
+        }
+      },
+      auth:{autoRefreshToken:false,persistSession:false,detectSessionInUrl:false}
     });
+    console.log('✅ Supabase klijent inicijalizovan sa tokenom');
     hideSbLogin();
     await sbLoadUserProfile();
     await sbLoadAll();
@@ -3135,8 +3142,13 @@ function filterOpisRadova(){
 
 // Sync all DS-derived izvođači to Supabase (called after login)
 async function sbSyncAllIzvToSupabase(){
-  if(!sb) return;
-  const {data:existing}=await sb.from('izvodjaci').select('naziv');
+  if(!sb||!sbSession) return;
+  // Use direct fetch with auth token to avoid 401
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/izvodjaci?select=naziv`,{
+    headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+sbSession.access_token}
+  });
+  if(!r.ok){console.warn('sbSyncAllIzvToSupabase: auth error',r.status);return;}
+  const existing=await r.json();
   const existingNames=new Set((existing||[]).map(r=>r.naziv));
   const toSync=izv.filter(i=>!existingNames.has(i.naziv)&&!i._dbId);
   console.log('Syncing',toSync.length,'izvođača to Supabase...');
