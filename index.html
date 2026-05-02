@@ -377,7 +377,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
   <div id="online-indicator" style="font-size:10px;padding:4px 10px;border-radius:10px;margin:0 12px 6px;background:#2E7D32;color:#fff;text-align:center;cursor:default">● Online</div>
-  <div class="sver">v12.6 — Dacić Prom d.o.o.</div>
+  <div class="sver">v12.7 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -2208,6 +2208,18 @@ function oM(type,id){
         <input type="file" id="m-pdf" accept=".pdf" style="display:none" onchange="hPdf(this)">
         <div id="m-pds" style="font-size:11px;color:var(--lb);margin-top:3px">${d.ugovorNaziv?'Priložen: '+esc(d.ugovorNaziv):''}</div>
       </div>
+      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;margin:14px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--border)">Dodjela stavki iz predmera</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px">Odaberi stavke kojima je ovaj izvođač odgovoran (mijenja lamelaA.izvodjac na tim stavkama):</div>
+      <div style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px">
+        ${stavke.map(s=>{
+          const assigned=s.lamelaA.izvodjac===d.naziv||s.lamelaB.izvodjac===d.naziv;
+          return`<label style="display:flex;align-items:center;gap:6px;padding:3px 6px;font-size:11px;cursor:pointer;border-radius:4px;${assigned?'background:var(--la-light)':''}">
+            <input type="checkbox" class="izv-stavka-cb" value="${s.id}" ${assigned?'checked':''}>
+            <span style="color:var(--text2);margin-right:2px">#${s.id}</span> ${esc(s.naziv)}
+          </label>`;
+        }).join('')}
+      </div>
+      <div style="font-size:10px;color:var(--text2);margin-top:4px">💡 Označene stavke prikazuju ovog izvođača u sekciji Izvođači i Predmer</div>
       <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;margin:14px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--border)">Rokovi izvođenja radova</div>
       <div class="fr">
         <div class="fg"><label>Početak radova (Lamela A)</label><input id="m-poc-a" type="date" value="${stavke.find(s=>s.lamelaA.izvodjac===d.naziv)?.lamelaA.pocetak||''}"></div>
@@ -2666,6 +2678,22 @@ function saveIzv(id){
   if(!d.naziv.trim()){alert('Unesite naziv firme.');return;}
   if(id){const rec=izv.find(i=>i.id===id);Object.assign(rec,d);sbSaveIzv(rec);sbLogDnv('izmenjeno','Izvođač izmenjen — '+d.naziv);}
   else{d.id=nii++;izv.push(d);sbSaveIzv(d);sbLogDnv('dodano','Novi izvođač — '+d.naziv);}
+  // Save stavke assignments
+  const checkedIds=new Set([...document.querySelectorAll('.izv-stavka-cb:checked')].map(cb=>parseInt(cb.value)));
+  const uncheckedIds=new Set([...document.querySelectorAll('.izv-stavka-cb:not(:checked)')].map(cb=>parseInt(cb.value)));
+  stavke.forEach(s=>{
+    if(checkedIds.has(s.id)){
+      // Assign this izvođač to lamelaA (and B if shared)
+      s.lamelaA.izvodjac=d.naziv;
+      if(!s.lamelaA.ugovorenaUnos) s.lamelaA.ugovorenaUnos=null;
+      if(isShared(s)||!s.lamelaB.izvodjac) s.lamelaB.izvodjac=d.naziv;
+    } else if(uncheckedIds.has(s.id)){
+      // Remove assignment only if this izvođač was assigned
+      if(s.lamelaA.izvodjac===d.naziv) s.lamelaA.izvodjac='';
+      if(s.lamelaB.izvodjac===d.naziv) s.lamelaB.izvodjac='';
+    }
+  });
+  sv(SK,stavke);
   // Save dates to all stavke with this izvođač
   const pocA=document.getElementById('m-poc-a')?.value||'';
   const zavA=document.getElementById('m-zav-a')?.value||'';
@@ -3470,17 +3498,13 @@ function rKalk(){
   // Troškovi: za svaku stavku — ako ima izvođača koristi ugovorenu cenu, inače predviđenu
   // Ova logika se primenjuje neovisno od aktivne lamele (gledamo obe lamele zajedno)
   const getKalkBase=(s)=>{
-    // Logika: ako stavka ima bilo kojeg izvođača -> koristi ugovorenu cijenu (punu, ne po lameli)
-    // Ako nema izvođača ni na A ni na B -> koristi predviđenu
     const la=s.lamelaA, lb=s.lamelaB;
     const hasA=!!la.izvodjac, hasB=!!lb.izvodjac;
     if(!hasA && !hasB) return s.predvidjena||0;
-    // Ima izvođača - uzimamo ugovorenu ako postoji, inače predviđenu
-    // Prioritet: A izvođač (primarni), pa B
-    if(hasA && la.ugovorenaUnos) return calcBruto(la.ugovorenaUnos, la.tipCene);
-    if(hasB && lb.ugovorenaUnos) return calcBruto(lb.ugovorenaUnos, lb.tipCene);
-    // Ima izvođača ali nema upisanu ugovorenu cijenu -> predviđena
-    return s.predvidjena||0;
+    if(isShared(s)) return la.ugovorenaUnos?calcBruto(la.ugovorenaUnos,la.tipCene):(s.predvidjena||0);
+    const ua=hasA?(la.ugovorenaUnos?calcBruto(la.ugovorenaUnos,la.tipCene):(s.predvidjena||0)):0;
+    const ub=hasB?(lb.ugovorenaUnos?calcBruto(lb.ugovorenaUnos,lb.tipCene):(s.predvidjena||0)):0;
+    return ua+ub;
   };
   const tBase=stavke.reduce((a,s)=>a+getKalkBase(s),0); // realna baza: ugo tamo gde postoji, pred gde ne
   const tUgo=stavke.reduce((a,s)=>a+getUgoB(s),0);      // samo ugovorene (za prikaz u redu "Ugovoreno")
@@ -3694,7 +3718,7 @@ function exportExcelFull(){
 // ===== BACKUP / RESTORE =====
 function exportBackup(){
   const data={
-    v:'10.3',
+    v:'12.6',
     ts:new Date().toISOString(),
     sit,izv,dnevnik,users,
     stavke_placeno:stavke.map(s=>({id:s.id,plA:s.lamelaA.placenoB||0,plB:s.lamelaB.placenoB||0,stA:s.lamelaA.status,stB:s.lamelaB.status}))
@@ -3775,6 +3799,7 @@ function resyncAllPlaceno(){
     s.lamelaB.placenoB=0;
   });
   sv(SK,stavke);
+  sbSaveAllGanttDates(); // saves placenoB to Supabase as well
   rAll();
 }
 
