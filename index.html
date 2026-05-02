@@ -377,7 +377,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
   <div id="online-indicator" style="font-size:10px;padding:4px 10px;border-radius:10px;margin:0 12px 6px;background:#2E7D32;color:#fff;text-align:center;cursor:default">● Online</div>
-  <div class="sver">v12.3 — Dacić Prom d.o.o.</div>
+  <div class="sver">v12.4 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -955,16 +955,22 @@ async function sbLoadAll(){
     }
     const { data: izvData } = await sb.from('izvodjaci').select('*');
     if(izvData && izvData.length){
-      izv = izvData.map(r=>({
-        id:r.id, _dbId:r.id, naziv:r.naziv, pib:r.pib||'', mb:r.mb||'',
-        kontakt:r.kontakt||'', telefon:r.telefon||'', email:r.email||'',
-        napomena:r.napomena||'', katIzv:r.kat_izv||'', lamelaIzv:r.lamela_izv||'Oba',
-        jedCenaIzv:r.jed_cena, ugoCenaIzv:r.ugo_cena, tipCeneIzv:r.tip_cene||'BRUTO',
-        avans:r.avans, avansRok:r.avans_rok||'', avansStatus:r.avans_status||'',
-        nacinPlacanja:r.nacin_placanja||'', rokPlacanjaDana:r.rok_placanja_dana||30,
-        nadzorniIme:r.nadzorni_ime||'', nadzorniTel:r.nadzorni_tel||'',
-        nadzorniFirma:r.nadzorni_firma||'', ugovorNaziv:r.ugovor_naziv||'', ugovorPdf:''
-      }));
+      // Merge: update existing by naziv, add new ones — don't wipe DS-derived izvođači
+      izvData.forEach(r=>{
+        const existing=izv.find(i=>i.naziv===r.naziv||i._dbId===r.id);
+        const mapped={
+          _dbId:r.id, naziv:r.naziv, pib:r.pib||'', mb:r.mb||'',
+          kontakt:r.kontakt||'', telefon:r.telefon||'', email:r.email||'',
+          napomena:r.napomena||'', katIzv:r.kat_izv||'', lamelaIzv:r.lamela_izv||'Oba',
+          jedCenaIzv:r.jed_cena, ugoCenaIzv:r.ugo_cena, tipCeneIzv:r.tip_cene||'BRUTO',
+          avans:r.avans, avansRok:r.avans_rok||'', avansStatus:r.avans_status||'',
+          nacinPlacanja:r.nacin_placanja||'', rokPlacanjaDana:r.rok_placanja_dana||30,
+          nadzorniIme:r.nadzorni_ime||'', nadzorniTel:r.nadzorni_tel||'',
+          nadzorniFirma:r.nadzorni_firma||'', ugovorNaziv:r.ugovor_naziv||'', ugovorPdf:''
+        };
+        if(existing){Object.assign(existing,mapped);}
+        else{izv.push({id:nii++,...mapped});}
+      });
       sv(IK, izv);
     }
     const { data: spData } = await sb.from('stavke_placeno').select('*');
@@ -3067,22 +3073,43 @@ function filterOpisRadova(){
 }
 
 // ===== SYNC DS IZVOĐAČI → IZV REGISTAR =====
+
+// Sync all DS-derived izvođači to Supabase (called after login)
+async function sbSyncAllIzvToSupabase(){
+  if(!sb) return;
+  const {data:existing}=await sb.from('izvodjaci').select('naziv');
+  const existingNames=new Set((existing||[]).map(r=>r.naziv));
+  const toSync=izv.filter(i=>!existingNames.has(i.naziv)&&!i._dbId);
+  console.log('Syncing',toSync.length,'izvođača to Supabase...');
+  for(const i of toSync) await sbSaveIzv(i);
+  if(toSync.length) console.log('✅ Izvođači synced:',toSync.length);
+}
+
 function syncIzvFromDS(){
   let changed=false;
+  const newIzvs=[];
   stavke.forEach(s=>{
     [s.lamelaA,s.lamelaB].forEach(la=>{
       if(!la.izvodjac)return;
       const exists=izv.some(i=>i.naziv===la.izvodjac);
       if(!exists){
-        izv.push({id:nii++,naziv:la.izvodjac,pib:'',mb:'',kontakt:'',telefon:'',email:'',napomena:'',
-          katIzv:'',lamelaIzv:'Oba',jedCenaIzv:null,ugoCenaIzv:null,tipCeneIzv:'BRUTO',
+        // Get category from stavka
+        const katIzv=s.kat||'';
+        const newIzv={id:nii++,naziv:la.izvodjac,pib:'',mb:'',kontakt:'',telefon:'',email:'',napomena:'',
+          katIzv,lamelaIzv:'Oba',jedCenaIzv:null,ugoCenaIzv:null,tipCeneIzv:'BRUTO',
           avans:null,avansRok:'',avansStatus:'',nacinPlacanja:'',rokPlacanjaDana:30,
-          nadzorniIme:'',nadzorniTel:'',nadzorniFirma:'',ugovorNaziv:'',ugovorPdf:''});
+          nadzorniIme:'',nadzorniTel:'',nadzorniFirma:'',ugovorNaziv:'',ugovorPdf:''};
+        izv.push(newIzv);
+        newIzvs.push(newIzv);
         changed=true;
       }
     });
   });
-  if(changed){sv(IK,izv);}
+  if(changed){
+    sv(IK,izv);
+    // Save to Supabase async (don't block init)
+    if(sb) newIzvs.forEach(i=>sbSaveIzv(i));
+  }
 }
 
 // ===== KATEGORIJA MODAL =====
