@@ -377,7 +377,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
   <div id="online-indicator" style="font-size:10px;padding:4px 10px;border-radius:10px;margin:0 12px 6px;background:#2E7D32;color:#fff;text-align:center;cursor:default">● Online</div>
-  <div class="sver">v12.4 — Dacić Prom d.o.o.</div>
+  <div class="sver">v12.6 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -993,8 +993,19 @@ async function sbLoadAll(){
       console.log('✅ Gantt datumi učitani iz Supabase:', spData.filter(r=>r.pocetak_a||r.pocetak_b).length, 'stavki sa datumima');
       sv(SK, stavke);
     }
+    // Load dnevnik
+    const {data:dnvData}=await sb.from('dnevnik').select('*').order('ts',{ascending:false}).limit(500);
+    if(dnvData&&dnvData.length){
+      dnevnik=dnvData.map(r=>({ts:r.ts,akcija:r.akcija,opis:r.opis||'',korisnik:r.korisnik||'?'}));
+      sv(DK,dnevnik);
+    }
   }catch(e){ console.warn('sbLoadAll error:', e); }
+  _lastSyncTs=Date.now();
+  updateOnlineStatus();
+  hideLoadingOverlay();
   rAll();
+  sbSyncAllIzvToSupabase();
+  sbSaveAllGanttDates();
 }
 
 async function sbSaveSit(sitObj){
@@ -1102,6 +1113,15 @@ function sbSubscribe(){
       .on('postgres_changes',{event:'*',schema:'public',table:'situacije'},()=>sbLoadAll())
       .on('postgres_changes',{event:'*',schema:'public',table:'izvodjaci'},()=>sbLoadAll())
       .on('postgres_changes',{event:'*',schema:'public',table:'stavke_placeno'},()=>sbLoadAll())
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'dnevnik'},(payload)=>{
+        if(payload.new){
+          const r=payload.new;
+          dnevnik.unshift({ts:r.ts,akcija:r.akcija,opis:r.opis||'',korisnik:r.korisnik||'?'});
+          if(dnevnik.length>500)dnevnik=dnevnik.slice(0,500);
+          sv(DK,dnevnik);
+          if(document.getElementById('page-dnevnik')?.classList.contains('active'))rDnevnik();
+        }
+      })
       .subscribe();
   }catch(e){}
 }
@@ -1863,7 +1883,7 @@ function delSit(sid,confirmed){
   sit=sit.filter(x=>x.id!==sid);
   sv(SITK,sit);sv(SK,stavke);
   if(_delDbId) sbDeleteSit(_delDbId);
-  logDnv('obrisano',_delSitName);
+  sbLogDnv('obrisano',_delSitName);
   cM();rAll();
 }
 function viewSitPdf(sid){
@@ -2085,6 +2105,7 @@ function oM(type,id){
     if(id&&d.ugovorPdf) window._pd={naziv:d.ugovorNaziv||'',data:d.ugovorPdf};
     const kats=['Grubi građevinski radovi','Fini građevinski radovi','Instalacije','Materijal','Zemljani radovi','Zakonski troškovi','Pravni troškovi','Projektni troškovi','Administrativni troškovi','Opšti troškovi','Troškovi uređenja partera','Radna snaga','Marketing'];
     mc.innerHTML=`<h2>${id?'Uredi izvođača':'Novi izvođač'}</h2>
+      <input type="hidden" id="m-izv-id-hidden" value="${id||0}">
 
       <div class="fg"><label>Naziv firme *</label><input id="m-naziv" value="${esc(d.naziv||'')}"></div>
       <div class="fr">
@@ -2643,8 +2664,8 @@ function saveIzv(id){
     ugovorPdf:window._pd.data
   };
   if(!d.naziv.trim()){alert('Unesite naziv firme.');return;}
-  if(id){const rec=izv.find(i=>i.id===id);Object.assign(rec,d);sbSaveIzv(rec);logDnv('izmenjeno','Izvođač izmenjen — '+d.naziv);}
-  else{d.id=nii++;izv.push(d);sbSaveIzv(d);logDnv('dodano','Novi izvođač — '+d.naziv);}
+  if(id){const rec=izv.find(i=>i.id===id);Object.assign(rec,d);sbSaveIzv(rec);sbLogDnv('izmenjeno','Izvođač izmenjen — '+d.naziv);}
+  else{d.id=nii++;izv.push(d);sbSaveIzv(d);sbLogDnv('dodano','Novi izvođač — '+d.naziv);}
   // Save dates to all stavke with this izvođač
   const pocA=document.getElementById('m-poc-a')?.value||'';
   const zavA=document.getElementById('m-zav-a')?.value||'';
@@ -2655,6 +2676,7 @@ function saveIzv(id){
     if(s.lamelaB.izvodjac===d.naziv){if(pocB)s.lamelaB.pocetak=pocB;if(zavB)s.lamelaB.zavrsetak=zavB;}
   });
   sbSaveAllGanttDates();
+  sbLogDnv('izmenjeno','Datumi izvođača ažurirani');
   sv(IK,izv);cM();rIzv();rGantt();
 }
 
@@ -2677,7 +2699,7 @@ function delIzv(id, fromModal){
   izv=izv.filter(i=>i.id!==id);
   sv(IK,izv);
   if(_izvDbId) sbDeleteIzv(_izvDbId);
-  logDnv('obrisano','Izvođač obrisan — '+_name);
+  sbLogDnv('obrisano','Izvođač obrisan — '+_name);
   if(fromModal) cM();
   rIzv();
 }
