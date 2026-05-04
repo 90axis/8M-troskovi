@@ -97,7 +97,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
   #page-predmer .tbox{overflow-x:auto}
   /* Gantt */
   #page-gantt .gc{flex-wrap:wrap;gap:6px}
-  .g-rl{font-size:10px!important;min-width:120px!important;max-width:120px!important}
+  .g-rl{font-size:10px!important;width:120px!important;min-width:120px!important;max-width:120px!important}
   /* Modali */
   .mwrap .mc-inner{margin:10px!important;max-height:calc(100vh - 20px)!important}
   /* Uplate table */
@@ -310,11 +310,11 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
 .gc label{font-size:12px;color:var(--text2)}
 .gc select{font-size:12px;padding:3px 8px;height:27px;border-radius:6px;border:1px solid var(--border);background:#fff}
 .g-header{display:flex;border-bottom:1px solid var(--border);margin-bottom:2px;min-width:700px;position:sticky;top:0;z-index:10;background:var(--bg2)}
-.g-lc{width:200px;flex-shrink:0;font-size:10px;font-weight:600;color:var(--text2);padding:4px 7px}
+.g-lc{width:var(--gl-w,220px);min-width:120px;flex-shrink:0;font-size:10px;font-weight:600;color:var(--text2);padding:4px 7px;position:relative}
 .g-months{display:flex;flex:1}
 .g-mon{font-size:10px;color:var(--text2);text-align:center;padding:3px 1px;border-left:1px solid var(--border);flex:1;min-width:0;overflow:hidden}
 .g-row{display:flex;align-items:center;margin-bottom:2px;min-height:26px;min-width:700px}
-.g-rl{width:200px;flex-shrink:0;font-size:11px;padding:1px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-rl{width:var(--gl-w,220px);min-width:120px;flex-shrink:0;font-size:11px;padding:1px 7px;overflow:hidden;text-overflow:ellipsis}
 .g-track{flex:1;position:relative;height:18px}
 .g-bar{position:absolute;height:14px;top:2px;border-radius:3px;display:flex;align-items:center;padding:0 5px;min-width:4px;cursor:grab;user-select:none}
 .g-bar:hover{filter:brightness(1.12)}
@@ -337,6 +337,9 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
 .g-row:hover .g-bar{filter:brightness(1.1)}
 .g-row.drag-over{background:rgba(21,88,160,0.15)!important;border-top:2px solid var(--la)}
 .g-row.dragging{opacity:0.4}
+.g-col-resize{position:absolute;right:0;top:0;width:5px;height:100%;cursor:col-resize;background:transparent;z-index:5}
+.g-col-resize:hover{background:var(--la);opacity:0.4}
+.g-lc{user-select:none}
 .g-drag-handle{display:inline-flex;align-items:center;justify-content:center;width:16px;min-width:16px;cursor:grab;color:var(--text2);font-size:12px;user-select:none;padding-right:2px}
 .g-drag-handle:hover{color:var(--la)}
 .g-drag-handle:active{cursor:grabbing}
@@ -349,6 +352,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
 .today-line{position:absolute;top:0;width:1.5px;background:#E53935;height:100%;z-index:2}
 .g-bl{font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis}
 #gantt-container{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 200px);border:1px solid var(--border);border-radius:8px;background:#fff}
+.gantt-wrap{position:relative}
 .g-leg{display:flex;gap:14px;margin-top:9px;flex-wrap:wrap}
 .g-li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
 .g-ld{width:10px;height:10px;border-radius:2px}
@@ -383,7 +387,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
   <div id="online-indicator" style="font-size:10px;padding:4px 10px;border-radius:10px;margin:0 12px 6px;background:#2E7D32;color:#fff;text-align:center;cursor:default">● Online</div>
-  <div class="sver">v13.3 — Dacić Prom d.o.o.</div>
+  <div class="sver">v13.4 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -513,7 +517,9 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
         <select id="g-fk"><option value="">Sve kategorije</option></select>
         <select id="g-fst"><option value="">Svi statusi</option><option>Nije počelo</option><option>U toku</option><option>Završeno</option></select>
         <input id="g-search" type="text" placeholder="🔍 Pretraži stavke..." oninput="rGantt()" style="font-size:11px;height:26px;padding:0 8px;border:1px solid var(--border);border-radius:6px;width:160px;outline:none">
-        <button class="btn btn-s" onclick="gResetOrder()" title="Vrati originalni redosljed" style="font-size:11px;height:26px;padding:0 8px">↺ Reset redosljeda</button> title="Poništi (Ctrl+Z)" style="font-size:11px;height:26px;padding:0 8px;opacity:0.4" disabled>↩ Undo</button>
+        <button class="btn btn-s" onclick="gResetOrder()" title="Vrati originalni redosljed" style="font-size:11px;height:26px;padding:0 8px">↺ Reset</button>
+        <button id="btn-gantt-undo" class="btn btn-s" onclick="gUndo()" title="Poništi (Ctrl+Z)" style="font-size:11px;height:26px;padding:0 8px;opacity:0.4" disabled>↩</button>
+        <button id="btn-gantt-redo" class="btn btn-s" onclick="gRedo()" title="Ponovi (Ctrl+Y)" style="font-size:11px;height:26px;padding:0 8px;opacity:0.4" disabled>↪</button>
         <button id="btn-gantt-redo" class="btn btn-s" onclick="gRedo()" title="Ponovi (Ctrl+Y)" style="font-size:11px;height:26px;padding:0 8px;opacity:0.4" disabled>↪ Redo</button>
         <button class="btn btn-p" onclick="sbSaveAllGanttDates().then(()=>{const b=this;b.textContent='✅ Sačuvano!';setTimeout(()=>b.textContent='💾 Sačuvaj Gantt',2000);})" style="font-size:11px;height:26px;padding:0 10px">💾 Sačuvaj Gantt</button>
       </div>
@@ -2029,7 +2035,7 @@ function rGantt(){
     });
   }
 
-  let html=`<div class="g-header" style="position:sticky;top:0;z-index:10;background:var(--bg2)"><div class="g-lc" style="display:flex;align-items:center;gap:2px"><span style="width:34px;flex-shrink:0"></span>Stavka</div><div class="g-months">${months.map(m=>`<div class="g-mon">${m}</div>`).join('')}</div></div>`;
+  let html=`<div class="g-header" style="position:sticky;top:0;z-index:10;background:var(--bg2)"><div class="g-lc" style="display:flex;align-items:center;gap:2px"><span style="width:34px;flex-shrink:0"></span>Stavka<div class="g-col-resize" onmousedown="gColResizeStart(event)" title="Povuci za promjenu širine"></div></div><div class="g-months">${months.map(m=>`<div class="g-mon">${m}</div>`).join('')}</div></div>`;
   if(!rows.length)html+='<div style="padding:16px;font-size:12px;color:#5f5e5a">Nema stavki sa datumima u ovom periodu.</div>';
   rows.forEach((r,idx)=>{
     const s=r.s;
@@ -4011,6 +4017,34 @@ function rDnevnik(){
     </tr>`;
   }).join('')||'<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Nema unosa u dnevniku</td></tr>';
 }
+
+
+// ===== GANTT COLUMN RESIZE =====
+function gColResizeStart(e){
+  e.preventDefault();
+  e.stopPropagation();
+  const startX=e.clientX;
+  const startW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gl-w'))||220;
+  document.body.style.cursor='col-resize';
+  function onMove(ev){
+    const newW=Math.max(120,Math.min(500,startW+(ev.clientX-startX)));
+    document.documentElement.style.setProperty('--gl-w',newW+'px');
+  }
+  function onUp(){
+    document.body.style.cursor='';
+    document.removeEventListener('mousemove',onMove);
+    document.removeEventListener('mouseup',onUp);
+    localStorage.setItem('8mart_glw',document.documentElement.style.getPropertyValue('--gl-w'));
+  }
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+}
+
+// Restore column width on init
+(function(){
+  const saved=localStorage.getItem('8mart_glw');
+  if(saved) document.documentElement.style.setProperty('--gl-w',saved);
+})();
 
 // ===== GANTT MULTI-YEAR =====
 function gYearChange(){
