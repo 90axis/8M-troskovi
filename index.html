@@ -1996,6 +1996,7 @@ function rIzv(){
 // ===== GANTT =====
 function rGantt(){
   const {sD,eD}=gGetRange();
+  const sMs=sD.getTime(), eMs=eD.getTime(), tMs=eMs-sMs;
   const checkedYears=[...document.querySelectorAll('.g-yr-cb:checked')].map(c=>parseInt(c.value));
   const allYears=checkedYears.length===0;
   const gfk=document.getElementById('g-fk')?.value||'';
@@ -2013,7 +2014,6 @@ function rGantt(){
     months.push(mN[mc.getMonth()]+' '+String(mc.getFullYear()).slice(2));
     mc=new Date(mc.getFullYear(),mc.getMonth()+1,1);
   }
-  const sMs=sD.getTime(),eMs=eD.getTime(),tMs=eMs-sMs;
   const today=new Date(),tdP=Math.max(0,Math.min(100,Math.round((today.getTime()-sMs)/tMs*100)));
 
   // Prikaz po lameli
