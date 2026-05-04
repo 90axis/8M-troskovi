@@ -383,7 +383,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
   <div id="online-indicator" style="font-size:10px;padding:4px 10px;border-radius:10px;margin:0 12px 6px;background:#2E7D32;color:#fff;text-align:center;cursor:default">● Online</div>
-  <div class="sver">v13.2 — Dacić Prom d.o.o.</div>
+  <div class="sver">v13.3 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -2010,19 +2010,22 @@ function rGantt(){
       const sm=new Date(lobj.pocetak).getTime(),em=new Date(lobj.zavrsetak).getTime();
       if(em<sMs||sm>eMs)return;
       const prefix=isA?'c-a-':'c-b-';
-      rows.push({s,lbl,naziv:s.naziv+(lam==='sve'?' ('+lbl+')':''),status:lobj.status,posto:lobj.posto||0,sm,em,prefix,kat:s.kat,izv:lobj.izvodjac||'',rowKey:s.id+'-'+lbl});
+      rows.push({s,lbl,naziv:s.naziv+(lam==='sve'?' ('+lbl+')':''),status:lobj.status,posto:lobj.posto||0,sm,em,prefix,kat:s.kat,izv:lobj.izvodjac||'',rowKey:s.id+'-'+lbl,groupKey:String(s.id)});
     };
     if(lam==='A'||lam==='sve') addRow(s.lamelaA,'A',true);
     if(lam==='B'||lam==='sve') addRow(s.lamelaB,'B',false);
   });
 
-  // Apply custom order if exists
+  // Apply custom order — group A+B rows together by stavka id
   if(ganttOrder.length){
     const orderMap=new Map(ganttOrder.map((k,i)=>[k,i]));
     rows.sort((a,b)=>{
-      const ai=orderMap.has(a.rowKey)?orderMap.get(a.rowKey):9999;
-      const bi=orderMap.has(b.rowKey)?orderMap.get(b.rowKey):9999;
-      return ai-bi;
+      // Use groupKey (stavka id) for ordering — A and B stay together
+      const ak=orderMap.has(a.groupKey)?orderMap.get(a.groupKey):(orderMap.has(a.rowKey)?orderMap.get(a.rowKey):9999);
+      const bk=orderMap.has(b.groupKey)?orderMap.get(b.groupKey):(orderMap.has(b.rowKey)?orderMap.get(b.rowKey):9999);
+      if(ak!==bk) return ak-bk;
+      // Within same stavka: A before B
+      return a.lbl==='A'?-1:1;
     });
   }
 
@@ -2035,7 +2038,7 @@ function rGantt(){
     const cls=r.prefix+(r.status==='Završeno'?'don':r.status==='U toku'?'act':'todo');
     const stavkaId=s.id;
     const rowId='gr-'+stavkaId+'-'+r.lbl;
-    html+=`<div class="g-row" id="${rowId}" data-rowkey="${r.rowKey}"
+    html+=`<div class="g-row" id="${rowId}" data-rowkey="${r.rowKey}" data-groupkey="${r.groupKey}"
       draggable="true"
       ondragstart="gRowDragStart(event,this)"
       ondragover="gRowDragOver(event,this)"
@@ -2044,7 +2047,8 @@ function rGantt(){
       ondragend="gRowDragEnd(this)"
       onmouseenter="gRowHover('${rowId}',true)" onmouseleave="gRowHover('${rowId}',false)">
       <div class="g-rl" title="${esc(r.naziv)}" style="display:flex;align-items:center;gap:2px">
-        <span class="g-drag-handle" title="Prevuci za promjenu redosljeda">⠿</span>
+        ${lam==='sve'&&r.lbl==='B'?'<span style="width:16px;min-width:16px;padding-right:2px"></span>':
+          `<span class="g-drag-handle" title="Prevuci za promjenu redosljeda (A+B zajedno)">⠿</span>`}
         <span class="g-row-num">${idx+1}</span>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.naziv)}</span>
       </div>
@@ -2836,10 +2840,13 @@ let _dragRowKey=null;
 function gRowDragStart(e,el){
   // Don't trigger if dragging a bar (gDragStart handles that)
   if(e.target.closest('.g-bar')||e.target.closest('.g-bar-resize'))return;
-  _dragRowKey=el.dataset.rowkey;
+  // Use groupKey (stavka id) so A+B move together
+  const groupKey=el.dataset.groupkey||el.dataset.rowkey;
+  _dragRowKey=groupKey;
   e.dataTransfer.effectAllowed='move';
-  e.dataTransfer.setData('text/plain',_dragRowKey);
-  setTimeout(()=>el.classList.add('dragging'),0);
+  e.dataTransfer.setData('text/plain',groupKey);
+  // Highlight both A and B rows of this group
+  document.querySelectorAll(`.g-row[data-groupkey="${groupKey}"]`).forEach(r=>setTimeout(()=>r.classList.add('dragging'),0));
 }
 function gRowDragOver(e,el){
   if(!_dragRowKey||el.dataset.rowkey===_dragRowKey)return;
@@ -2853,23 +2860,25 @@ function gRowDragLeave(el){
 }
 function gRowDrop(e,el){
   e.preventDefault();
-  if(!_dragRowKey||el.dataset.rowkey===_dragRowKey)return;
-  // Get current order from DOM
-  const allRows=[...document.querySelectorAll('.g-row[data-rowkey]')];
-  const keys=allRows.map(r=>r.dataset.rowkey);
-  const fromIdx=keys.indexOf(_dragRowKey);
-  const toIdx=keys.indexOf(el.dataset.rowkey);
+  const targetGroup=el.dataset.groupkey||el.dataset.rowkey;
+  if(!_dragRowKey||targetGroup===_dragRowKey)return;
+  // Build unique group order from DOM (deduplicate by groupKey)
+  const allRows=[...document.querySelectorAll('.g-row[data-groupkey]')];
+  const seen=new Set();
+  const groups=[];
+  allRows.forEach(r=>{const g=r.dataset.groupkey||r.dataset.rowkey;if(!seen.has(g)){seen.add(g);groups.push(g);}});
+  const fromIdx=groups.indexOf(_dragRowKey);
+  const toIdx=groups.indexOf(targetGroup);
   if(fromIdx<0||toIdx<0)return;
-  keys.splice(fromIdx,1);
-  keys.splice(toIdx,0,_dragRowKey);
-  ganttOrder=keys;
+  groups.splice(fromIdx,1);
+  groups.splice(toIdx,0,_dragRowKey);
+  ganttOrder=groups;
   sv(GK,ganttOrder);
-  document.querySelectorAll('.g-row.drag-over').forEach(r=>r.classList.remove('drag-over'));
+  document.querySelectorAll('.g-row.drag-over,.g-row.dragging').forEach(r=>{r.classList.remove('drag-over');r.classList.remove('dragging');});
   rGantt();
 }
 function gRowDragEnd(el){
-  el.classList.remove('dragging');
-  document.querySelectorAll('.g-row.drag-over').forEach(r=>r.classList.remove('drag-over'));
+  document.querySelectorAll('.g-row.dragging,.g-row.drag-over').forEach(r=>{r.classList.remove('dragging');r.classList.remove('drag-over');});
   _dragRowKey=null;
 }
 
