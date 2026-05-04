@@ -391,7 +391,7 @@ td.td-pr{background:var(--fin-pr-light)!important;color:var(--fin-pr)}
     <div class="ni" data-page="podesavanja" onclick="nav('podesavanja')"><span class="ni-icon">⚙</span>Podešavanja</div>
   </div>
   <div id="online-indicator" style="font-size:10px;padding:4px 10px;border-radius:10px;margin:0 12px 6px;background:#2E7D32;color:#fff;text-align:center;cursor:default">● Online</div>
-  <div class="sver">v13.8 — Dacić Prom d.o.o.</div>
+  <div class="sver">v13.9 — Dacić Prom d.o.o.</div>
 </div>
 <div class="main">
   <div class="topbar">
@@ -1995,6 +1995,10 @@ function rIzv(){
 
 // ===== GANTT =====
 function rGantt(){
+  // Preserve scroll position across re-renders
+  const _gcEl=document.getElementById('gantt-container');
+  const _savedScrollTop=_gcEl?_gcEl.scrollTop:0;
+  const _savedScrollLeft=_gcEl?_gcEl.scrollLeft:0;
   const {sD,eD}=gGetRange();
   const sMs=sD.getTime(), eMs=eD.getTime(), tMs=eMs-sMs;
   const checkedYears=[...document.querySelectorAll('.g-yr-cb:checked')].map(c=>parseInt(c.value));
@@ -2088,6 +2092,9 @@ function rGantt(){
     </div></div></div>`;
   });
   document.getElementById('gantt-container').innerHTML=`<div class="gantt-wrap">${html}</div>`;
+  // Restore scroll position
+  const _gcElAfter=document.getElementById('gantt-container');
+  if(_gcElAfter){_gcElAfter.scrollTop=_savedScrollTop;_gcElAfter.scrollLeft=_savedScrollLeft;}
 }
 
 // ===== PDV INFO HELPER =====
@@ -2898,10 +2905,7 @@ function gRowDrop(e,el){
   ganttOrder=groups;
   sv(GK,ganttOrder);
   document.querySelectorAll('.g-row.drag-over,.g-row.dragging').forEach(r=>{r.classList.remove('drag-over');r.classList.remove('dragging');});
-  const _gc3=document.getElementById('gantt-container');
-  const _sx3=_gc3?_gc3.scrollLeft:0, _sy3=_gc3?_gc3.scrollTop:0;
   rGantt();
-  if(_gc3){_gc3.scrollLeft=_sx3;_gc3.scrollTop=_sy3;}
 }
 function gRowDragEnd(el){
   document.querySelectorAll('.g-row.dragging,.g-row.drag-over').forEach(r=>{r.classList.remove('dragging');r.classList.remove('drag-over');});
@@ -2989,10 +2993,7 @@ function gDragStart(e,el){
     _drag=null;
     document.removeEventListener('mousemove',onMove);
     document.removeEventListener('mouseup',onUp);
-    const _gc=document.getElementById('gantt-container');
-    const _sx=_gc?_gc.scrollLeft:0, _sy=_gc?_gc.scrollTop:0;
     rGantt();rKasnjenja();
-    if(_gc){_gc.scrollLeft=_sx;_gc.scrollTop=_sy;}
   }
   document.addEventListener('mousemove',onMove);
   document.addEventListener('mouseup',onUp);
@@ -3042,10 +3043,7 @@ function gResizeStart(e,handle){
     if(tooltip)tooltip.style.display='none';
     document.removeEventListener('mousemove',onMove);
     document.removeEventListener('mouseup',onUp);
-    const _gc2=document.getElementById('gantt-container');
-    const _sx2=_gc2?_gc2.scrollLeft:0, _sy2=_gc2?_gc2.scrollTop:0;
     rGantt();rKasnjenja();
-    if(_gc2){_gc2.scrollLeft=_sx2;_gc2.scrollTop=_sy2;}
   }
   document.addEventListener('mousemove',onMove);
   document.addEventListener('mouseup',onUp);
